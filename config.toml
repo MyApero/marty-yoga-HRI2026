@@ -37,11 +37,3 @@ joints_to_monitor = [
 show_labels = true
 text_scale = 0.5
 max_error_margin = 60.0 # 0 deg = Green, 10+ deg = Red
-
-[poses.test]
-L-Elbow = 156
-R-Elbow = 169
-L-Knee = 146
-R-Knee = 130
-L-Hip = 167
-R-Hip = 139
