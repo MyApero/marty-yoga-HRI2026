@@ -1,15 +1,6 @@
 import cv2
-from dataclasses import dataclass
 
 from src.head_master import HeadMaster
-
-
-@dataclass
-class Pose:
-    name: str
-    mediapipe_pose: str
-    be_careful_at: str
-
 
 def main():
     master = HeadMaster(camera_index=2)
@@ -31,11 +22,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-# say_bonjour()
-
-# for pose in poses:
-#     print(f"Now demonstrating the {pose.name} pose.")
-#     headmaster.load_pose(pose)
-#     headmaster.do_pose()
