@@ -23,11 +23,10 @@ class HeadMaster:
         self.pose_correct_timer = 0
         self.config = load_toml(CONFIG_FILE)
         self.poses = {
-            pose_name: load_toml(os.path.join(POSES_FOLDER, pose_name, "pose.toml"))[
-                "pose"
-            ]
+            pose_name: load_toml(os.path.join(POSES_FOLDER, pose_name, "pose.toml"))["pose"]
             for pose_name in POSES_LIST
         }
+        self.name_files = None
 
         self.landmarker = setup_landmarker(self.config["model_path"])
 
@@ -64,6 +63,7 @@ class HeadMaster:
                 result.pose_landmarks,
                 self.config,
                 self.poses[self.pose],
+                self.name_files
             )
         if show_landmarks:
             cv2.putText(
@@ -80,6 +80,7 @@ class HeadMaster:
             output_frame, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC
         )
         cv2.imshow("Video Feedback", frame)
+        self.name_files = None
 
     def analyze_image(self, image):
         timestamp = int(time.time() * 1000)
@@ -95,8 +96,11 @@ class HeadMaster:
             elapsed_time = time.time() - start_time
             timer_text = f"Time in pose: {int(elapsed_time)}s"
             self.process_image(show_landmarks=True, timer_text=timer_text)
-            if cv2.waitKey(1) & 0xFF == ord("q"):
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord("q"):
                 break
+            if key == ord("c"):
+                self.name_files = str(time.time())
 
     def cleanup(self):
         self.camera.release()

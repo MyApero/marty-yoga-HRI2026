@@ -1,7 +1,13 @@
 [pose]
-L-Elbow = 156
-R-Elbow = 169
-L-Knee = 146
-R-Knee = 130
-L-Hip = 167
-R-Hip = 139
+L-Wrist = 178.32
+R-Wrist = 175.22
+L-Elbow = 160.92
+R-Elbow = 164.83
+L-Arm-Open = 128.71
+R-Arm-Open = 135.5
+L-Knee = 177.23
+R-Knee = 121.2
+L-Hip-Open = 120.85
+R-Hip-Open = 115.89
+Spine-Alignment = 137.14
+
