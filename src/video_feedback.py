@@ -67,6 +67,7 @@ def draw_skeleton(image, pose_landmarks, config, targets, name_file: str|None=No
                 2,
                 cv2.LINE_AA
             )
+
     if name_file:
         folder_path = Path("poses" + name_file)
         folder_path.mkdir(parents=True, exist_ok=True)

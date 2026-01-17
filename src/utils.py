@@ -120,7 +120,7 @@ def get_angles_error_from_landmarks(coord_map, targets, angle_configs):
             "target_angle": target_angle,
             "error": round(error, 2)
         }
-        return results
+    return results
 
 
 def get_color_gradient(error, threshold):
