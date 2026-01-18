@@ -31,6 +31,7 @@ class HeadMaster:
         }
         self.actual_run = []
         self.history = []
+        self.ongoing_mistakes = {}
         self.name_files = None
 
         self.landmarker = setup_landmarker(self.config["model_path"])
@@ -57,7 +58,45 @@ class HeadMaster:
     def filter_image(self, image):
         return apply_film_effect(image.numpy_view(), self.config["film_settings"])
 
-    def process_image(self, show_landmarks=False, timer_text=""):
+    def update_ongoing_frame(self, elapsed):
+        if len(self.actual_run) == 0:
+            return 
+        frame = self.actual_run[-1]
+        for angle_name, angle_data in frame.items():
+            if abs(angle_data["error"]) < self.config["feedback"]["max_error_margin"]:
+                if angle_name in self.ongoing_mistakes and len(self.ongoing_mistakes[angle_name]["mistakes"][-1]) < 2:
+                    self.ongoing_mistakes[angle_name]["mistakes"][-1].append(elapsed)
+                    self.ongoing_mistakes[angle_name]["timed_mistake"] += (self.ongoing_mistakes[angle_name]["mistakes"][-1][1] - self.ongoing_mistakes[angle_name]["mistakes"][-1][0])
+                continue
+            if angle_name not in self.ongoing_mistakes:
+                self.ongoing_mistakes[angle_name] = {
+                    "mistakes_repetitions": 0,
+                    "timed_mistake": 0,
+                    "remider_done": 0,
+                    "mistakes":[[elapsed]]
+                }
+            if len(self.ongoing_mistakes[angle_name]["mistakes"][-1]) > 1:
+                self.ongoing_mistakes[angle_name]["mistakes"].append([elapsed])
+                self.ongoing_mistakes[angle_name]["mistakes_repetitions"] += 1
+
+
+    def analayze_ongoing_frame(self, elapsed):
+        correction_to_do = {}
+        for angle_name, mistakes in self.ongoing_mistakes.items():
+            if len(mistakes["mistakes"][-1]) < 2:
+                timed_mistaked = elapsed - mistakes["mistakes"][-1][0]
+                if timed_mistaked > 5.0:
+                    correction_to_do[angle_name] = "time_mistakes"
+                    mistakes["remider_done"] += 1
+                    mistakes["mistakes"][-1].append(elapsed)
+                elif mistakes["timed_mistake"] + timed_mistaked > 7.0 * mistakes["remider_done"]:
+                    correction_to_do[angle_name] = "repetition_mistake"
+                    mistakes["remider_done"] += 1
+                    mistakes["mistakes"][-1].append(elapsed)
+        return correction_to_do
+
+
+    def process_image(self, show_landmarks=False, timer_text="", elapsed=0.0):
         camera_image = self.capture_image_from_camera()
         if show_landmarks:
             result = self.analyze_image(camera_image)
@@ -71,6 +110,9 @@ class HeadMaster:
                 self.name_files,
                 self.marty
             ))
+        self.update_ongoing_frame(elapsed)
+        correction = self.analayze_ongoing_frame(elapsed)
+        print(correction)
         if show_landmarks:
             cv2.putText(
                 output_frame,
@@ -98,10 +140,12 @@ class HeadMaster:
     def do_pose(self):
         start_time = time.time()
         timer_text = ""
+        self.actual_run = []
+        self.ongoing_mistakes = {}
         while self.pose_correct_timer < self.pose_duration:
             elapsed_time = time.time() - start_time
             timer_text = f"Time in pose: {int(elapsed_time)}s"
-            self.process_image(show_landmarks=True, timer_text=timer_text)
+            self.process_image(show_landmarks=True, timer_text=timer_text, elapsed=elapsed_time)
             key = cv2.waitKey(1) & 0xFF
             if key == ord("q"):
                 break
