@@ -8,20 +8,20 @@ howto = """1. Stand at the top of the mat with big toes touching and heels sligh
 6. Keep chin parallel to the floor, aligning ears, shoulders, hips, and ankles in a straight line."""
 
 [pose]
-R-Wrist = 164.74
-L-Wrist = 177.0
-R-Elbow = 164.29
-L-Elbow = 165.06
-R-Shoulder = 23.81
-L-Shoulder = 21.3
-R-Knee = 179.57
-L-Knee = 178.94
-R-Hip = 84.07
-L-Hip = 85.33
-Spine = 84.07
-Spine-Alignment = 178.61
-R-Ankle = 159.94
-L-Ankle = 157.31
+"Right Wrist" = 164.74
+"Left Wrist" = 177.0
+"Right Elbow" = 164.29
+"Left Elbow" = 165.06
+"Right Shoulder" = 23.81
+"Left Shoulder" = 21.3
+"Right Knee" = 179.57
+"Left Knee" = 178.94
+"Right Hip" = 84.07
+"Left Hip" = 85.33
+"Spine" = 84.07
+"Spine-Alignment" = 178.61
+"Right Ankle" = 159.94
+"Left Ankle" = 157.31
 
 [marty]
 LeftHip = 0

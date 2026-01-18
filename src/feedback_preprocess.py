@@ -14,7 +14,7 @@ def variance_feedback(actual_run, feedback_summary):
     mean_angles = {name: sum(values) / len(values) for name, values in angles.items()}
     for name, values in angles.items():
         variance = sum((x - mean_angles[name]) ** 2 for x in values) / len(values)
-        feedback_summary[name]["variance"] = "Good" if variance < 15 else "Needs Improvement"
+        feedback_summary[name]["Variance"] = "Good" if variance < 15 else "Needs Improvement"
         # {
         #     "mean_angle": round(mean_angles[name], 2),
         #     "variance": round(variance, 2),
@@ -42,7 +42,7 @@ def get_pose_validity(actual_run, feedback_summary):
         error = round(
             abs(angles[angle_name]["mean"] - angles[angle_name]["target"]), 2
         )
-        feedback_summary[angle_name]["validity"] = "Valid" if error < 10 else "Invalid"
+        feedback_summary[angle_name]["Validity"] = "Valid" if error < 10 else "Invalid"
 
 
 def get_errors_over_time(actual_run, time, max_error, feedback_summary):
@@ -61,7 +61,7 @@ def get_errors_over_time(actual_run, time, max_error, feedback_summary):
 
     # Error time of each angle in seconds
     for angle_name, total_error_time in error_timeline.items():
-        feedback_summary[angle_name]["total error time sec"] = str(total_error_time) + "s"
+        feedback_summary[angle_name]["Total error time sec"] = str(total_error_time) + "s"
 
 def get_feedbacks_from_run(actual_run, time, max_error):
     """
@@ -77,7 +77,6 @@ def get_feedbacks_from_run(actual_run, time, max_error):
                 feedback_summary[angle_name] = {
                     "Variance": '',
                     "Validity": '',
-                    "Total error time sec": '',
                 }
 
     variance_feedback(actual_run, feedback_summary)

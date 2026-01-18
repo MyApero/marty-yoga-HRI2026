@@ -19,7 +19,7 @@ POSES_LIST = ["warrior", "chair", "mountain"]
 
 
 class HeadMaster:
-    def __init__(self, camera_index, pose_duration=30, logging_level=logging.INFO):
+    def __init__(self, camera_index, pose_duration=60, logging_level=logging.INFO):
         self.config = load_toml(CONFIG_FILE)
         self.camera = self.init_camera(camera_index)
         self.marty = self.init_marty()
@@ -225,6 +225,7 @@ class HeadMaster:
             timer_text = f"Time in pose: {int(elapsed_time)}s / {self.pose_duration}s"
 
             if not self.is_pose_ending and elapsed_time > self.pose_duration - 10:
+                self.is_pose_ending = True
                 feedbacks = get_feedbacks_from_run(
                     self.actual_run,
                     elapsed_time,
@@ -232,8 +233,9 @@ class HeadMaster:
                 )
 
                 feedbacks["pose_name"] = self.pose_name
-                self.voice.end_pose_feedback(toml.dumps(feedbacks))
-                self.is_pose_ending = True
+                feedback_dump = toml.dumps(feedbacks)
+                print(feedback_dump)
+                self.voice.end_pose_feedback(feedback_dump)
 
             self.process_image(
                 show_landmarks=True,

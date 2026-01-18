@@ -1,6 +1,5 @@
 import ollama
 import sounddevice as sd
-
 from kokoro import KPipeline as Kokoro
 import threading
 import queue
@@ -10,11 +9,9 @@ import sys
 
 # --- Configuration ---
 VOICE_NAME = "am_michael"
-VOICE_LANG = "en-gb"
 # bf_alice, bf_emma, bf_isabella, bf_lily, bm_daniel, bm_fable, bm_george, bm_lewis
 VOICE_SPEED = 1.0
 SAMPLE_RATE = 24000
-MARGIN_BEFORE_START_SECONDS = 0.0
 
 
 class Speak:
@@ -26,9 +23,21 @@ class Speak:
         can_i_speak=lambda: True,
     ):
         self.move_marty_callback = move_marty_callback
+        self.analyze_ongoing_frame = analyze_ongoing_frame
+        self.generated_text_callback = generated_text_callback
+        self.can_i_speak = can_i_speak
+
+        # Queues
         self.request_queue = queue.Queue()
         self.text_queue = queue.Queue()
         self.audio_queue = queue.Queue()
+
+        # State Management
+        self.current_utterance_done_event = threading.Event()
+        self.correction = None
+        self.generated_text = ""
+
+        # Load Models
         try:
             self.kokoro = Kokoro(lang_code="b")
             print("Kokoro loaded successfully.", file=sys.stderr)
@@ -36,20 +45,19 @@ class Speak:
             print(f"Failed to load Kokoro: {e}", file=sys.stderr)
             sys.exit(1)
 
-        # --- Start Coordinator ---
-        # This thread stays alive to manage sequential conversations
-        self.coordinator_thread = threading.Thread(
-            target=self._coordinator_worker, daemon=True
+        self.stream = sd.OutputStream(
+            samplerate=SAMPLE_RATE, channels=1, dtype="float32"
         )
-        self.coordinator_thread.start()
 
-        self.correction: dict = None
-        self.analyze_ongoing_frame = analyze_ongoing_frame
+        # --- Initialize Threads ONCE ---
+        # 1. TTS Worker
+        threading.Thread(target=self._tts_worker, daemon=True).start()
 
-        self.generated_text = ""
-        self.generated_text_callback = generated_text_callback
+        # 2. Player Worker
+        threading.Thread(target=self._player_worker, daemon=True).start()
 
-        self.can_i_speak = can_i_speak
+        # 3. Coordinator (Manages the flow)
+        threading.Thread(target=self._coordinator_worker, daemon=True).start()
 
     def _tts_worker(self):
         """
@@ -60,7 +68,7 @@ class Speak:
             if text is None:
                 self.audio_queue.put(None)
                 self.text_queue.task_done()
-                break
+                continue  # Go back to waiting for next conversation
             try:
                 generator = self.kokoro(text, voice=VOICE_NAME, speed=VOICE_SPEED)
                 for _, (_, _, audio) in enumerate(generator):
@@ -70,93 +78,67 @@ class Speak:
                 print(f"TTS Error: {e}", file=sys.stderr)
             self.text_queue.task_done()
 
-    def _player_worker(self, margin_before_start):
+    def _player_worker(self):
         """
         Consumes audio_queue, plays sound, triggers callbacks.
         """
-        first_chunk = self.audio_queue.get()
-
-        stream = sd.OutputStream(samplerate=SAMPLE_RATE, channels=1, dtype="float32")
-        time.sleep(margin_before_start)
-        while not self.can_i_speak():
-            time.sleep(0.1)
-        stream.start()
-
-        chunk_index = 0
-
-        if self.correction is not None:
-            correction_keys = self.correction.keys()
-            current_keys = self.analyze_ongoing_frame().keys()
-            if not (correction_keys <= current_keys):
-                # print(
-                #     f"Cancelling: {correction_keys} not in {current_keys}",
-                #     file=sys.stderr,
-                # )
-                self.audio_queue.task_done()
-                self.empty_queues()
-                stream.stop()
-                stream.close()
-                return
-
         while True:
-            if chunk_index == 0:
-                audio_chunk = first_chunk
-            else:
+            first_chunk = self.audio_queue.get()
+            # If we receive None immediately, it's an empty message, just signal done
+            if first_chunk is None:
+                self.current_utterance_done_event.set()
+                self.audio_queue.task_done()
+                continue
+
+            while not self.can_i_speak():
+                time.sleep(0.1)
+            self.stream.start()
+            # Play first chunk
+            self._play_chunk(self.stream, first_chunk)
+            self.audio_queue.task_done()
+
+            # Loop for subsequent chunks until None
+            while True:
                 audio_chunk = self.audio_queue.get()
 
-            if audio_chunk is None:
+                if audio_chunk is None:
+                    self.audio_queue.task_done()
+                    break  # End of this utterance
+
+                if self.correction is not None:
+                    current_keys = self.analyze_ongoing_frame().keys()
+                    if not (self.correction.keys() <= current_keys):
+                        # Drain the queue to stop playback
+                        while not self.audio_queue.empty():
+                            try:
+                                self.audio_queue.get_nowait()
+                                self.audio_queue.task_done()
+                            except queue.Empty:
+                                break
+                        break
+
+                self._play_chunk(self.stream, audio_chunk)
                 self.audio_queue.task_done()
-                break
-            # Duration of the current audio chunk in seconds
-            chunk_duration = len(audio_chunk) / SAMPLE_RATE
-            if self.move_marty_callback:
-                self.move_marty_callback(chunk_duration)
 
-            stream.write(audio_chunk)
-            self.audio_queue.task_done()
-            chunk_index += 1
+            self.stream.stop()
+            self.current_utterance_done_event.set()
 
-        stream.stop()
-        stream.close()
-
-    def say(self, messages, wait_before_first_chunk=MARGIN_BEFORE_START_SECONDS):
-        """
-        Non-blocking call. Queues the message and returns immediately.
-        """
-        self.generated_text = ""
-        self.request_queue.put((messages, wait_before_first_chunk))
+    def _play_chunk(self, stream, chunk):
+        duration = len(chunk) / SAMPLE_RATE
+        if self.move_marty_callback:
+            self.move_marty_callback(duration)
+        stream.write(chunk)
 
     def _coordinator_worker(self):
-        """
-        Main background loop. It processes one conversation request at a time
-        to prevent audio overlapping.
-        """
+        """Manages the lifecycle of a request."""
         while True:
-            # Wait for a 'say' command
             request = self.request_queue.get()
-            if request is None:
-                break
+            messages = request
+            self.current_utterance_done_event.clear()
 
-            messages, wait_time = request
-
-            # Start helper threads for THIS specific utterance
-            tts_thread = threading.Thread(target=self._tts_worker, daemon=True)
-            player_thread = threading.Thread(
-                target=self._player_worker, args=(wait_time,), daemon=True
-            )
-
-            tts_thread.start()
-            player_thread.start()
-
-            # Generate text (Producer)
             self._run_ollama_generation(messages)
-
-            # Signal workers to finish
             self.text_queue.put(None)
-
-            # Wait for the audio to fully finish before processing the next request
-            tts_thread.join()
-            player_thread.join()
+            self.current_utterance_done_event.wait()
 
             self.request_queue.task_done()
 
@@ -199,6 +181,13 @@ class Speak:
 
     # --- Wrapper methods for your main logic ---
 
+    def say(self, messages):
+        """
+        Non-blocking call. Queues the message and returns immediately.
+        """
+        self.generated_text = ""
+        self.request_queue.put((messages))
+
     def presentation(self):
         print("Marty is presenting!")
 
@@ -218,7 +207,7 @@ class Speak:
             {"role": "system", "content": f"Pose details: {str(pose['description'])}"},
             {"role": "user", "content": str(correction)},
         ]
-        self.say(messages, wait_before_first_chunk=0)
+        self.say(messages)
 
     def end_pose_feedback(self, feedbacks):
         self.empty_queues()
@@ -226,17 +215,16 @@ class Speak:
         self.generated_text = ""
         system_instruction = (
             "You are a friendly yoga coach. Receive the analysis report. "
-            "If Consistency > 80%, praise them. "
-            "If Consistency < 50%, be encouraging but firm about the correction. "
-            "Address the 'Primary Deviation' specifically. "
             "Keep it to 2 sentences max. with max sentence length of 20 words. "
-            "Don't mention the numbers in the report. and don't put any asterisks and parentheses in the answer."
-            "Be creative and don't hesitate to use metaphors and jokes! "
+            "Highlight the weak points and suggest one improvement tip. "
+            "No numbers, no asterisks and no parentheses."
+            "You can use metaphors if needed. "
         )
         messages = [
             {"role": "system", "content": system_instruction},
             {"role": "user", "content": f"Full feedback data: {str(feedbacks)}"},
         ]
+        print("\n[Main Thread] Adding end-of-pose feedback to queue...")
         self.say(messages)
 
     def is_done(self):
@@ -276,3 +264,5 @@ class Speak:
                 self.audio_queue.task_done()
             except queue.Empty:
                 break
+        self.current_utterance_done_event.set()
+        print("[Main Thread] All queues have been emptied.")
