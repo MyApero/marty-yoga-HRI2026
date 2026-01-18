@@ -7,7 +7,9 @@ from src.video_feedback import draw_skeleton
 from src.mediapipe_operations import setup_landmarker, apply_film_effect
 from src.feedback_preprocess import get_feedbacks_from_run
 from src.marty import MyMarty
+from src.speak import Speak
 import logging
+import sys
 
 # Initial Setup
 CONFIG_FILE = "config.toml"
@@ -20,6 +22,7 @@ class HeadMaster:
         self.config = load_toml(CONFIG_FILE)
         self.camera = self.init_camera(camera_index)
         self.marty = self.init_marty()
+        self.voice = self.init_voice()
         self.pose = None
         self.pose_duration = pose_duration  # seconds
         self.pose_correct_timer = 0
@@ -43,7 +46,22 @@ class HeadMaster:
         return cv2.VideoCapture(camera_index)
 
     def init_marty(self):
-        return MyMarty(self.config["marty"])
+        try:
+            marty = MyMarty(self.config["marty"])
+            return marty
+        except Exception as e:
+            print(f"Failed to initialize Marty: {e}", file=sys.stderr)
+            return None
+
+    def init_voice(self):
+        if self.marty:
+            def move_marty_callback(chunk_duration):
+                self.marty.move_marty_arm_randomly(chunk_duration)
+        else:
+            def move_marty_callback(chunk_duration):
+                pass
+
+        return Speak(move_marty_callback)
 
     def capture_image_from_camera(self):
         success, frame = self.camera.read()
@@ -60,25 +78,30 @@ class HeadMaster:
 
     def update_ongoing_frame(self, elapsed):
         if len(self.actual_run) == 0:
-            return 
+            return
         frame = self.actual_run[-1]
         for angle_name, angle_data in frame.items():
             if abs(angle_data["error"]) < self.config["feedback"]["max_error_margin"]:
-                if angle_name in self.ongoing_mistakes and len(self.ongoing_mistakes[angle_name]["mistakes"][-1]) < 2:
+                if (
+                    angle_name in self.ongoing_mistakes
+                    and len(self.ongoing_mistakes[angle_name]["mistakes"][-1]) < 2
+                ):
                     self.ongoing_mistakes[angle_name]["mistakes"][-1].append(elapsed)
-                    self.ongoing_mistakes[angle_name]["timed_mistake"] += (self.ongoing_mistakes[angle_name]["mistakes"][-1][1] - self.ongoing_mistakes[angle_name]["mistakes"][-1][0])
+                    self.ongoing_mistakes[angle_name]["timed_mistake"] += (
+                        self.ongoing_mistakes[angle_name]["mistakes"][-1][1]
+                        - self.ongoing_mistakes[angle_name]["mistakes"][-1][0]
+                    )
                 continue
             if angle_name not in self.ongoing_mistakes:
                 self.ongoing_mistakes[angle_name] = {
                     "mistakes_repetitions": 0,
                     "timed_mistake": 0,
                     "remider_done": 0,
-                    "mistakes":[[elapsed]]
+                    "mistakes": [[elapsed]],
                 }
             if len(self.ongoing_mistakes[angle_name]["mistakes"][-1]) > 1:
                 self.ongoing_mistakes[angle_name]["mistakes"].append([elapsed])
                 self.ongoing_mistakes[angle_name]["mistakes_repetitions"] += 1
-
 
     def analayze_ongoing_frame(self, elapsed):
         correction_to_do = {}
@@ -89,12 +112,14 @@ class HeadMaster:
                     correction_to_do[angle_name] = "time_mistakes"
                     mistakes["remider_done"] += 1
                     mistakes["mistakes"][-1].append(elapsed)
-                elif mistakes["timed_mistake"] + timed_mistaked > 7.0 * mistakes["remider_done"]:
+                elif (
+                    mistakes["timed_mistake"] + timed_mistaked
+                    > 7.0 * mistakes["remider_done"]
+                ):
                     correction_to_do[angle_name] = "repetition_mistake"
                     mistakes["remider_done"] += 1
                     mistakes["mistakes"][-1].append(elapsed)
         return correction_to_do
-
 
     def process_image(self, show_landmarks=False, timer_text="", elapsed=0.0):
         camera_image = self.capture_image_from_camera()
@@ -102,17 +127,21 @@ class HeadMaster:
             result = self.analyze_image(camera_image)
         output_frame = self.filter_image(camera_image)
         if show_landmarks and result.pose_landmarks:
-            self.actual_run.append(draw_skeleton(
-                output_frame,
-                result.pose_landmarks,
-                self.config,
-                self.poses[self.pose],
-                self.name_files,
-                self.marty
-            ))
+            self.actual_run.append(
+                draw_skeleton(
+                    output_frame,
+                    result.pose_landmarks,
+                    self.config,
+                    self.poses[self.pose],
+                    self.name_files,
+                    self.marty,
+                )
+            )
         self.update_ongoing_frame(elapsed)
         correction = self.analayze_ongoing_frame(elapsed)
-        print(correction)
+        if bool(correction):
+            print(correction)
+            self.voice.corrective_feedback(correction)
         if show_landmarks:
             cv2.putText(
                 output_frame,
@@ -145,7 +174,9 @@ class HeadMaster:
         while self.pose_correct_timer < self.pose_duration:
             elapsed_time = time.time() - start_time
             timer_text = f"Time in pose: {int(elapsed_time)}s"
-            self.process_image(show_landmarks=True, timer_text=timer_text, elapsed=elapsed_time)
+            self.process_image(
+                show_landmarks=True, timer_text=timer_text, elapsed=elapsed_time
+            )
             key = cv2.waitKey(1) & 0xFF
             if key == ord("q"):
                 break
@@ -154,14 +185,13 @@ class HeadMaster:
             if key == ord("f"):
                 self.marty.corrective_feedback()
             if key == ord("h"):
-                self.marty.end_pose_feedback()
+                self.voice.end_pose_feedback()
 
         feedbacks = get_feedbacks_from_run(
             self.actual_run,
             elapsed_time,
             self.config["feedback"]["max_error_margin"],
         )
-
 
     def cleanup(self):
         self.camera.release()

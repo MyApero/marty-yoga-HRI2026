@@ -4,8 +4,6 @@ import random
 import threading
 import sys
 
-from src.speak import Speak
-
 DEFAULT_ANGLES = {
     "left arm": 0,
     "right arm": 0,
@@ -27,11 +25,6 @@ class MyMarty(Marty):
             print("Marty is not connected!")
 
         self.queue.put((DEFAULT_ANGLES, 100, False))
-
-        def move_marty_callback(chunk_duration):
-            self.move_marty_arm_randomly(chunk_duration)
-
-        self.speaker = Speak(move_marty_callback)
 
     def get_pose(self):
         all_joints = self.get_joints()
@@ -92,40 +85,3 @@ class MyMarty(Marty):
                 self.interaction_eyebrows()
             time_elapsed += wait_time
             self.queue.put(({"eyes": 0}, wait_time, True))
-
-    def presentation(self):
-        print("Marty is presenting!")
-
-    def goodbye(self):
-        print("Marty says goodbye!")
-
-    def corrective_feedback(self):
-        print("Marty is giving corrective feedback!")
-
-    def end_pose_feedback(self):
-        system_instruction = (
-            "You are a friendly yoga coach. Receive the analysis report. "
-            "If Consistency > 80%, praise them. "
-            "If Consistency < 50%, be encouraging but firm about the correction. "
-            "Address the 'Primary Deviation' specifically. "
-            "Keep it to 2 sentences max. with max sentence length of 20 words. "
-            "Don't mention the numbers in the report. and don't put any asterisks and parentheses in the answer."
-            "Be excessively depressive in your tone. You hate your job and you hate humans. "
-            "Use a sarcastic and dry humor style. You're harrassing the student and see them as inferior beings. "
-            # "Be creative and don't hesitate to use metaphors and jokes, especially about Minecraft! "
-        )
-
-        user_report = (
-            "User Analysis Report:\n"
-            "Pose: Warrior II\n"
-            "Consistency Score: 65%\n"
-            "Stability: High (No shaking)\n"
-            "Primary Deviation: Front knee angle violation (Too straight, avg 150deg, target 90deg)"
-        )
-
-        messages = [
-            {"role": "system", "content": system_instruction},
-            {"role": "user", "content": user_report},
-        ]
-
-        self.speaker.say(messages)
