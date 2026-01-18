@@ -14,7 +14,7 @@ import sys
 # Initial Setup
 CONFIG_FILE = "config.toml"
 POSES_FOLDER = "poses/"
-POSES_LIST = ["warrior", "chair"]
+POSES_LIST = ["warrior", "chair", "mountain"]
 
 
 class HeadMaster:
@@ -23,13 +23,11 @@ class HeadMaster:
         self.camera = self.init_camera(camera_index)
         self.marty = self.init_marty()
         self.voice = self.init_voice()
-        self.pose = None
+        self.pose_name = None
         self.pose_duration = pose_duration  # seconds
         self.pose_correct_timer = 0
         self.poses = {
-            pose_name: load_toml(os.path.join(POSES_FOLDER, pose_name, "pose.toml"))[
-                "pose"
-            ]
+            pose_name: load_toml(os.path.join(POSES_FOLDER, pose_name, "pose.toml"))
             for pose_name in POSES_LIST
         }
         self.actual_run = []
@@ -58,8 +56,7 @@ class HeadMaster:
             def move_marty_callback(chunk_duration):
                 self.marty.move_marty_arm_randomly(chunk_duration)
         else:
-            def move_marty_callback(chunk_duration):
-                pass
+            move_marty_callback = None
 
         return Speak(move_marty_callback)
 
@@ -132,16 +129,16 @@ class HeadMaster:
                     output_frame,
                     result.pose_landmarks,
                     self.config,
-                    self.poses[self.pose],
+                    self.poses[self.pose_name]['pose'],
                     self.name_files,
                     self.marty,
                 )
             )
         self.update_ongoing_frame(elapsed)
         correction = self.analayze_ongoing_frame(elapsed)
-        if bool(correction):
+        if bool(correction) and self.voice.is_done():
             print(correction)
-            self.voice.corrective_feedback(correction)
+            self.voice.corrective_feedback(correction, self.poses[self.pose_name])
         if show_landmarks:
             cv2.putText(
                 output_frame,
@@ -164,7 +161,7 @@ class HeadMaster:
         return self.landmarker.detect_for_video(image, timestamp)
 
     def load_pose(self, pose):
-        self.pose = pose
+        self.pose_name = pose
 
     def do_pose(self):
         start_time = time.time()
@@ -183,7 +180,7 @@ class HeadMaster:
             if key == ord("c"):
                 self.name_files = str(time.time())
             if key == ord("f"):
-                self.marty.corrective_feedback()
+                self.voice.corrective_feedback()
             if key == ord("h"):
                 self.voice.end_pose_feedback()
 

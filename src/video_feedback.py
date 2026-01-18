@@ -92,6 +92,10 @@ def draw_skeleton(
             marty_data = marty.get_pose()
 
         data = {
+            "description": {
+                "context": "",
+                "howto": "",
+            },
             "pose": {
                 name: float(angle_data["current_angle"])
                 for name, angle_data in angles.items()

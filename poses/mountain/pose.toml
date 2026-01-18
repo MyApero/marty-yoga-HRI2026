@@ -1,0 +1,36 @@
+[description]
+context = "Tadasana (Mountain Pose) is a foundational standing yoga posture used in Sun Salutations and as a base for other standing poses. While it appears to be simple standing, it actively strengthens the abdomen, back, and legs while stretching the entire body. When performed with proper alignment, it improves posture, develops balance, eases sciatica, and lifts the foot arches."
+howto = """1. Stand at the top of the mat with big toes touching and heels slightly apart.
+2. Lift and spread toes, distributing weight evenly across both feet.
+3. Engage thighs, lift kneecaps, and rotate thighs slightly inward without hyperextending knees.
+4. Tilt sacrum forward for a neutral spine and lift the chest, drawing shoulder blades down the back.
+5. Hold arms by sides with fingers spread and palms facing forward or inward.
+6. Keep chin parallel to the floor, aligning ears, shoulders, hips, and ankles in a straight line."""
+
+[pose]
+L-Wrist = 167.38
+R-Wrist = 156.11
+L-Elbow = 168.86
+R-Elbow = 167.92
+L-Arm-Open = 18.38
+R-Arm-Open = 20.67
+L-Knee = 178.09
+R-Knee = 176.37
+L-Hip-Open = 84.16
+R-Hip-Open = 88.25
+Bend-Forward = 84.16
+Spine-Alignment = 178.64
+L-Ankle = 153.81
+R-Ankle = 164.43
+
+[marty]
+LeftHip = 0
+LeftTwist = 0
+LeftKnee = 0
+RightHip = 0
+RightTwist = 0
+RightKnee = 0
+LeftArm = 0
+RightArm = 0
+Eyes = 0
+
