@@ -3,6 +3,7 @@ import queue
 import random
 import threading
 import sys
+import toml
 
 DEFAULT_ANGLES = {
     "left arm": 0,
@@ -41,31 +42,45 @@ class MyMarty(Marty):
             except Exception as e:
                 print(f"Marty Error: {e}", file=sys.stderr)
 
-############ A TESTER ###############
-    def interraction_knee(self, side, height_min, height_max):
-        leg_height = random.randint(height_min, height_max)
-        duration = leg_height * 7
-        self.queue.put(({side: leg_height}, duration, True))
-        self.queue.put(({side: 0}, duration, False))
+    def load_pose(self, file: str):
+        """
+        Translates custom PascalCase pose dict to Marty format and moves.
+        """
+        translated_pose = {}
+        joint_pose = toml.load(file)["marty"]
 
-    def interraction_ankel_rot(self, side, height_min, height_max):
-        ankel_rot = random.randint(height_min, height_max)
-        duration = ankel_rot * 7
-        self.queue.put(({side: ankel_rot}, duration, True))
-        self.queue.put(({side: 0}, duration, False))
+        mapping = {
+        "LeftHip": "left hip",
+        "LeftTwist": "left twist",
+        "LeftKnee": "left knee",
+        "RightHip": "right hip",
+        "RightTwist": "right twist",
+        "RightKnee": "right knee",
+        "LeftArm": "left arm",
+        "RightArm": "right arm",
+        "Eyes": "eyes"
+        }
 
-    def interraction_ankel_dev(self, side, height_min, height_max):
-        ankel_dev = random.randint(height_min, height_max)
-        duration = ankel_dev * 7
-        self.queue.put(({side: ankel_dev}, duration, True))
-        self.queue.put(({side: 0}, duration, False))
-####################################
+        for custom_key, value in joint_pose.items():
+            if custom_key in mapping:
+                translated_pose[mapping[custom_key]] = value
+        
+        return translated_pose
+    
 
-    def interaction_arm(self, side, height_min, height_max):
+
+    def load_and_do_pose(self, file:str, duration:int=1000):
+        pose = self.load_pose(file)
+        for key, value in pose.items():
+            self.interaction(key, value, value, False, duration)
+
+
+    def interaction(self, side, height_min, height_max, bloking:bool, duration:int|None=None):
         arm_height = random.randint(height_min, height_max)
-        duration = arm_height * 7
-        self.queue.put(({side: arm_height}, duration, True))
-        self.queue.put(({side: 0}, duration, False))
+        if duration is None:
+            duration = arm_height * 7
+        self.queue.put(({side: arm_height}, duration, bloking))
+        return duration
 
     def interaction_eyebrows(self):
         self.queue.put(({"eyes": random.randint(20, 30)}, 100, True))
@@ -78,9 +93,11 @@ class MyMarty(Marty):
             max_dice = 5 if time_elapsed == 0 else 3
             dice = random.randint(2, max_dice)
             if dice == 2:
-                self.interaction_arm("left arm", 15, 80)
+                duration = self.interaction("left arm", 15, 80, True)
+                self.interaction("left arm", 0, 0, False, duration)
             if dice == 3:
-                self.interaction_arm("right arm", 15, 80)
+                duration = self.interaction("right arm", 15, 80, True)
+                self.interaction("right arm", 0, 0, False, duration)
             if dice >= 4:
                 self.interaction_eyebrows()
             time_elapsed += wait_time

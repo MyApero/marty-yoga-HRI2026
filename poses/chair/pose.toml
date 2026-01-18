@@ -1,3 +1,12 @@
+[description]
+context = "Utkatasana (Chair Pose) is a heating standing posture that strengthens the thighs, calves, and ankles while toning the shoulders and back. It stimulates the abdominal organs and diaphragm/heart, helping to build endurance and grounding."
+howto = """1. Stand in Tadasana with big toes touching and heels slightly apart (or feet hip-width apart for better balance).
+2. Inhale and raise your arms overhead, perpendicular to the floor. Keep palms facing inward or join them.
+3. Exhale and bend your knees, sitting your hips back and down as if sitting into an imaginary chair.
+4. Shift your weight into your heels so you can lift your toes slightly.
+5. Keep your lower back long (avoid overarching) by drawing your lower belly in and up.
+6. Hold the pose, keeping the chest lifted and thighs parallel to the floor if possible."""
+
 [pose]
 L-Elbow = 156
 R-Elbow = 169
@@ -5,3 +14,14 @@ L-Knee = 146
 R-Knee = 130
 L-Hip = 167
 R-Hip = 139
+
+[marty]
+LeftHip = 49
+LeftTwist = 0
+LeftKnee = 5
+RightHip = -53
+RightTwist = -1
+RightKnee = -6
+LeftArm = -66
+RightArm = 100
+Eyes = 0

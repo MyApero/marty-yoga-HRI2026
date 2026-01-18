@@ -1,0 +1,35 @@
+[description]
+context = "Virabhadrasana II on the left side mirrors the benefits of the right, balancing the body's strength and flexibility. It focuses on strengthening the left leg and opening the left side of the pelvic girdle, ensuring symmetrical muscle development."
+howto = """1. From a wide-legged stance, turn your left foot out 90 degrees to point to the top of the mat. Turn your right foot slightly inward.
+2. Align your left heel with the arch of your right foot.
+3. Exhale and bend your left knee deeply until it is stacked directly over your left ankle, forming a right angle.
+4. Press firmly through the outer edge of your right (back) foot to keep the back leg engaged and straight.
+5. Extend your arms out to the sides at shoulder height, reaching through the fingertips.
+6. Turn your head to look past your left fingers, keeping the torso long and centered between the legs."""
+
+[pose]
+R-Wrist = 177.06
+L-Wrist = 157.77
+R-Elbow = 132.69
+L-Elbow = 52.88
+R-Shoulder = 44.94
+L-Shoulder = 1.23
+R-Knee = 178.07
+L-Knee = 179.77
+R-Hip = 93.94
+L-Hip = 82.71
+Spine = 82.71
+Spine-Alignment = 177.84
+R-Ankle = 161.73
+L-Ankle = 178.62
+
+[marty]
+LeftHip = -24
+LeftTwist = -42
+LeftKnee = -60
+RightHip = 54
+RightTwist = 0
+RightKnee = -7
+LeftArm = -65
+RightArm = 100
+Eyes = 0

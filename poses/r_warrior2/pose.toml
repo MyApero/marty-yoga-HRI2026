@@ -1,0 +1,35 @@
+[description]
+context = "Virabhadrasana II (Warrior 2) is a powerful standing pose that increases stamina and strengthens the legs and ankles. It opens the hips and chest while stimulating abdominal organs. On the right side, it specifically targets the opening of the right hip and strengthening of the right quadricep."
+howto = """1. Begin in Tadasana (Mountain Pose). Exhale and step your feet wide apart (about 3 to 4 feet).
+2. Turn your right foot out 90 degrees so your toes point to the top of the mat. Turn your left foot slightly inward (about 45 degrees).
+3. Align your right heel with the arch of your left foot.
+4. Exhale and bend your right knee until it is directly over your right ankle. Ensure the knee does not drift inward; keep it tracking over the second toe.
+5. Raise your arms parallel to the floor, reaching actively out to the sides with palms facing down.
+6. Gaze softly over your right fingertips, keeping shoulders relaxed and stacked directly over your hips."""
+
+[pose]
+R-Wrist = 170.3
+L-Wrist = 172.88
+R-Elbow = 61.55
+L-Elbow = 152.7
+R-Shoulder = 23.6
+L-Shoulder = 18.15
+R-Knee = 177.07
+L-Knee = 175.98
+R-Hip = 89.4
+L-Hip = 90.49
+Spine = 89.4
+Spine-Alignment = 167.54
+R-Ankle = 176.57
+L-Ankle = 163.51
+
+[marty]
+LeftHip = 49
+LeftTwist = -4
+LeftKnee = 10
+RightHip = -53
+RightTwist = 41
+RightKnee = 6
+LeftArm = 93
+RightArm = -62
+Eyes = 1
