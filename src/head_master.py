@@ -6,7 +6,7 @@ from src.utils import load_toml
 from src.video_feedback import draw_skeleton
 from src.mediapipe_operations import setup_landmarker, apply_film_effect
 from src.feedback_preprocess import get_feedbacks_from_run
-from src.marty import Marty
+from src.marty import MyMarty
 import logging
 
 # Initial Setup
@@ -24,7 +24,9 @@ class HeadMaster:
         self.pose_correct_timer = 0
         self.config = load_toml(CONFIG_FILE)
         self.poses = {
-            pose_name: load_toml(os.path.join(POSES_FOLDER, pose_name, "pose.toml"))["pose"]
+            pose_name: load_toml(os.path.join(POSES_FOLDER, pose_name, "pose.toml"))[
+                "pose"
+            ]
             for pose_name in POSES_LIST
         }
         self.actual_run = []
@@ -40,7 +42,7 @@ class HeadMaster:
         return cv2.VideoCapture(camera_index)
 
     def init_marty(self):
-        return Marty()
+        return MyMarty("USB", "/dev/tty.usbserial-110")
 
     def capture_image_from_camera(self):
         success, frame = self.camera.read()
@@ -104,13 +106,17 @@ class HeadMaster:
                 break
             if key == ord("c"):
                 self.name_files = str(time.time())
+            if key == ord("f"):
+                self.marty.corrective_feedback()
+            if key == ord("h"):
+                self.marty.end_pose_feedback()
+
         feedbacks = get_feedbacks_from_run(
             self.actual_run,
             elapsed_time,
             self.config["feedback"]["max_error_margin"],
         )
-        
-            
+
 
     def cleanup(self):
         self.camera.release()
