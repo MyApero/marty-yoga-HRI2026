@@ -16,7 +16,9 @@ def main():
             break
         if key == ord("d"):  # Press 'd' to demo yoga
             master.load_pose("mountain")
-            master.do_pose()
+            feedback = master.do_pose()
+            print()
+            print("Feedback:", feedback)
         master.process_image()
 
 
