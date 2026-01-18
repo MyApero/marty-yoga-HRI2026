@@ -42,7 +42,7 @@ class HeadMaster:
         return cv2.VideoCapture(camera_index)
 
     def init_marty(self):
-        return MyMarty("USB", "/dev/tty.usbserial-110")
+        return MyMarty("USB", "/dev/ttyUSB0")
 
     def capture_image_from_camera(self):
         success, frame = self.camera.read()
@@ -68,7 +68,8 @@ class HeadMaster:
                 result.pose_landmarks,
                 self.config,
                 self.poses[self.pose],
-                self.name_files
+                self.name_files,
+                self.marty
             ))
         if show_landmarks:
             cv2.putText(

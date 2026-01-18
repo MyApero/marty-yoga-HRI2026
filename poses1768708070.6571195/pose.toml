@@ -1,0 +1,26 @@
+[pose]
+L-Wrist = 173.71
+R-Wrist = 163.6
+L-Elbow = 137.11
+R-Elbow = 169.85
+L-Arm-Open = 65.91
+R-Arm-Open = 53.04
+L-Knee = 149.58
+R-Knee = 146.86
+L-Hip-Open = 49.61
+R-Hip-Open = 107.82
+Bend-Forward = 49.61
+Spine-Alignment = 133.41
+L-Ankle = 173.8
+R-Ankle = 167.12
+
+[marty]
+LeftHip = -7
+LeftTwist = 0
+LeftKnee = 0
+RightHip = -5
+RightTwist = 0
+RightKnee = 0
+LeftArm = 0
+RightArm = 1
+Eyes = 0

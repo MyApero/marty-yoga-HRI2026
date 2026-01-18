@@ -9,6 +9,10 @@ from src.speak import Speak
 DEFAULT_ANGLES = {
     "left arm": 0,
     "right arm": 0,
+    "left knee": 0,
+    "right knee": 0,
+    "right twist": 0,
+    "left twist": 0,
     "eyes": 0,
 }
 
@@ -29,6 +33,12 @@ class MyMarty(Marty):
 
         self.speaker = Speak(move_marty_callback)
 
+    def get_pose(self):
+        all_joints = self.get_joints()
+
+        pose_data = {info['name']: info['pos'] for info in all_joints.values()}
+        return pose_data
+
     def marty_worker(self):
         while True:
             try:
@@ -38,8 +48,28 @@ class MyMarty(Marty):
             except Exception as e:
                 print(f"Marty Error: {e}", file=sys.stderr)
 
-    def interaction_arm(self, side):
-        arm_height = random.randint(15, 80)
+############ A TESTER ###############
+    def interraction_knee(self, side, height_min, height_max):
+        leg_height = random.randint(height_min, height_max)
+        duration = leg_height * 7
+        self.queue.put(({side: leg_height}, duration, True))
+        self.queue.put(({side: 0}, duration, False))
+
+    def interraction_ankel_rot(self, side, height_min, height_max):
+        ankel_rot = random.randint(height_min, height_max)
+        duration = ankel_rot * 7
+        self.queue.put(({side: ankel_rot}, duration, True))
+        self.queue.put(({side: 0}, duration, False))
+
+    def interraction_ankel_dev(self, side, height_min, height_max):
+        ankel_dev = random.randint(height_min, height_max)
+        duration = ankel_dev * 7
+        self.queue.put(({side: ankel_dev}, duration, True))
+        self.queue.put(({side: 0}, duration, False))
+####################################
+
+    def interaction_arm(self, side, height_min, height_max):
+        arm_height = random.randint(height_min, height_max)
         duration = arm_height * 7
         self.queue.put(({side: arm_height}, duration, True))
         self.queue.put(({side: 0}, duration, False))
@@ -55,9 +85,9 @@ class MyMarty(Marty):
             max_dice = 5 if time_elapsed == 0 else 3
             dice = random.randint(2, max_dice)
             if dice == 2:
-                self.interaction_arm("left arm")
+                self.interaction_arm("left arm", 15, 80)
             if dice == 3:
-                self.interaction_arm("right arm")
+                self.interaction_arm("right arm", 15, 80)
             if dice >= 4:
                 self.interaction_eyebrows()
             time_elapsed += wait_time

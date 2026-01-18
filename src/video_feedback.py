@@ -1,9 +1,10 @@
 import cv2
 from src.utils import get_skeleton_coordinates, get_angles_error_from_landmarks, get_joint_color
 from pathlib import Path
+from .marty import MyMarty
 import toml
 
-def draw_skeleton(image, pose_landmarks, config, targets, name_file: str|None=None):
+def draw_skeleton(image, pose_landmarks, config, targets, name_file: str|None=None, marty:MyMarty|None=None):
     h, w, _ = image.shape
     joint_connections = config["skeleton"]["joint_connections"]
     fb_settings = config["feedback"]
@@ -72,11 +73,26 @@ def draw_skeleton(image, pose_landmarks, config, targets, name_file: str|None=No
         folder_path = Path("poses" + name_file)
         folder_path.mkdir(parents=True, exist_ok=True)
         toml_file = folder_path / "pose.toml"
+        marty_data = {
+            "LeftHip":0,
+            "LeftTwist":0,
+            "LeftKnee":0,
+            "RightHip":0,
+            "RightTwist":0,
+            "RightKnee":0,
+            "LeftArm":0,
+            "RightArm":0,
+            "Eyes":0,
+            }
+        if marty:
+            marty_data = marty.get_pose()
+
         data = {
             "pose": {
                 name: float(angle_data["current_angle"])
                 for name, angle_data in angles.items()
-            }
+            },
+            "marty": marty_data
         }
         with open(toml_file, "w", encoding="utf-8") as f:
             toml.dump(data, f)
