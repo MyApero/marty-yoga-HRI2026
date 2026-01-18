@@ -53,12 +53,13 @@ class HeadMaster:
 
     def init_voice(self):
         if self.marty:
+
             def move_marty_callback(chunk_duration):
                 self.marty.move_marty_arm_randomly(chunk_duration)
         else:
             move_marty_callback = None
 
-        return Speak(move_marty_callback)
+        return Speak(move_marty_callback, self.analyze_ongoing_frame)
 
     def capture_image_from_camera(self):
         success, frame = self.camera.read()
@@ -94,28 +95,30 @@ class HeadMaster:
                     "mistakes_repetitions": 0,
                     "timed_mistake": 0,
                     "remider_done": 0,
+                    "target_angle": angle_data["target_angle"],
+                    "current_angle": angle_data["current_angle"],
                     "mistakes": [[elapsed]],
                 }
             if len(self.ongoing_mistakes[angle_name]["mistakes"][-1]) > 1:
                 self.ongoing_mistakes[angle_name]["mistakes"].append([elapsed])
                 self.ongoing_mistakes[angle_name]["mistakes_repetitions"] += 1
 
-    def analayze_ongoing_frame(self, elapsed):
+    def analyze_ongoing_frame(self):
         correction_to_do = {}
         for angle_name, mistakes in self.ongoing_mistakes.items():
             if len(mistakes["mistakes"][-1]) < 2:
-                timed_mistaked = elapsed - mistakes["mistakes"][-1][0]
-                if timed_mistaked > 5.0:
-                    correction_to_do[angle_name] = "time_mistakes"
-                    mistakes["remider_done"] += 1
-                    mistakes["mistakes"][-1].append(elapsed)
-                elif (
-                    mistakes["timed_mistake"] + timed_mistaked
-                    > 7.0 * mistakes["remider_done"]
-                ):
-                    correction_to_do[angle_name] = "repetition_mistake"
-                    mistakes["remider_done"] += 1
-                    mistakes["mistakes"][-1].append(elapsed)
+                # timed_mistaked = elapsed - mistakes["mistakes"][-1][0]
+                # if timed_mistaked > 5.0:
+                #     correction_to_do[angle_name] = "time_mistakes"
+                #     mistakes["remider_done"] += 1
+                #     mistakes["mistakes"][-1].append(elapsed)
+                # elif (
+                #     mistakes["timed_mistake"] + timed_mistaked
+                #     > 7.0 * mistakes["remider_done"]
+                # ):
+                correction_to_do[angle_name + ' target:' + str(round(mistakes["target_angle"]))] = "current:" + str(round(mistakes["current_angle"]))
+                mistakes["remider_done"] += 1
+                # mistakes["mistakes"][-1].append(elapsed)
         return correction_to_do
 
     def process_image(self, show_landmarks=False, timer_text="", elapsed=0.0):
@@ -129,15 +132,16 @@ class HeadMaster:
                     output_frame,
                     result.pose_landmarks,
                     self.config,
-                    self.poses[self.pose_name]['pose'],
+                    self.poses[self.pose_name]["pose"],
                     self.name_files,
                     self.marty,
                 )
             )
         self.update_ongoing_frame(elapsed)
-        correction = self.analayze_ongoing_frame(elapsed)
+        correction = self.analyze_ongoing_frame()
         if bool(correction) and self.voice.is_done():
             print(correction)
+            self.voice.correction = correction
             self.voice.corrective_feedback(correction, self.poses[self.pose_name])
         if show_landmarks:
             cv2.putText(
