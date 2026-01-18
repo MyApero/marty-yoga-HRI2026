@@ -17,12 +17,12 @@ POSES_LIST = ["warrior", "chair"]
 
 class HeadMaster:
     def __init__(self, camera_index, pose_duration=10, logging_level=logging.INFO):
+        self.config = load_toml(CONFIG_FILE)
         self.camera = self.init_camera(camera_index)
         self.marty = self.init_marty()
         self.pose = None
         self.pose_duration = pose_duration  # seconds
         self.pose_correct_timer = 0
-        self.config = load_toml(CONFIG_FILE)
         self.poses = {
             pose_name: load_toml(os.path.join(POSES_FOLDER, pose_name, "pose.toml"))[
                 "pose"
@@ -43,7 +43,7 @@ class HeadMaster:
         return cv2.VideoCapture(camera_index)
 
     def init_marty(self):
-        return MyMarty("USB", "/dev/ttyUSB0")
+        return MyMarty(self.config["marty"])
 
     def capture_image_from_camera(self):
         success, frame = self.camera.read()

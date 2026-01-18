@@ -1,4 +1,5 @@
 model_path = "pose_landmarker_full.task"
+marty = "usb:///dev/tty.usbserial-110"
 
 [film_settings]
 contrast = 1.2
