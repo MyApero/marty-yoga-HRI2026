@@ -114,7 +114,6 @@ def get_angles_error_from_landmarks(coord_map, targets, angle_configs):
         
 
         results[name] = {
-            "name": name,
             "coord": coord,
             "current_angle": round(avg_angle, 2),
             "target_angle": target_angle,

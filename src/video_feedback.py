@@ -81,4 +81,4 @@ def draw_skeleton(image, pose_landmarks, config, targets, name_file: str|None=No
         with open(toml_file, "w", encoding="utf-8") as f:
             toml.dump(data, f)
         print(f"Pose data saved to {toml_file}")
-                
+    return angles

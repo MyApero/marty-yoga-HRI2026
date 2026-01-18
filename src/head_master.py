@@ -5,6 +5,7 @@ import time
 from src.utils import load_toml
 from src.video_feedback import draw_skeleton
 from src.mediapipe_operations import setup_landmarker, apply_film_effect
+from src.feedback_preprocess import get_feedbacks_from_run
 from src.marty import Marty
 import logging
 
@@ -26,6 +27,8 @@ class HeadMaster:
             pose_name: load_toml(os.path.join(POSES_FOLDER, pose_name, "pose.toml"))["pose"]
             for pose_name in POSES_LIST
         }
+        self.actual_run = []
+        self.history = []
         self.name_files = None
 
         self.landmarker = setup_landmarker(self.config["model_path"])
@@ -58,13 +61,13 @@ class HeadMaster:
             result = self.analyze_image(camera_image)
         output_frame = self.filter_image(camera_image)
         if show_landmarks and result.pose_landmarks:
-            draw_skeleton(
+            self.actual_run.append(draw_skeleton(
                 output_frame,
                 result.pose_landmarks,
                 self.config,
                 self.poses[self.pose],
                 self.name_files
-            )
+            ))
         if show_landmarks:
             cv2.putText(
                 output_frame,
@@ -101,6 +104,13 @@ class HeadMaster:
                 break
             if key == ord("c"):
                 self.name_files = str(time.time())
+        feedbacks = get_feedbacks_from_run(
+            self.actual_run,
+            elapsed_time,
+            self.config["feedback"]["max_error_margin"],
+        )
+        
+            
 
     def cleanup(self):
         self.camera.release()
