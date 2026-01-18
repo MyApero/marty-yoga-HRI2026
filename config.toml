@@ -19,14 +19,16 @@ joint_connections = [
     { name = "R-Forearm", angles = ["R-Elbow", "R-Wrist"], joint = [14, 16] },
     { name = "L-Upper-Arm", angles = ["L-Elbow", "L-Arm-Open"], joint = [11, 13] },
     { name = "R-Upper-Arm", angles = ["R-Elbow", "R-Arm-Open"], joint = [12, 14] },
-    { name = "L-Lower-leg", angles = ["L-Knee"], joint = [25, 27] },
-    { name = "R-Lower-leg", angles = ["R-Knee"], joint = [26, 28] },
+    { name = "L-Lower-leg", angles = ["L-Knee", "L-Ankle"], joint = [25, 27] },
+    { name = "R-Lower-leg", angles = ["R-Knee", "R-Ankle"], joint = [26, 28] },
     { name = "L-Leg", angles = ["L-Knee", "L-Hip-Open"], joint = [23, 25] },
     { name = "R-Leg", angles = ["R-Knee", "R-Hip-Open"], joint = [24, 26] },
     { name = "Hips", angles = ["L-Hip-Open", "R-Hip-Open"], joint = [23, 24] },
     { name = "Shoulders", angles = ["L-Arm-Open", "R-Arm-Open"], joint = [11, 12] },
     { name = "Neck", angles = ["Spine-Alignment"], joint = [999, 998] },
-    { name = "Spine", angles = ["Spine-Alignment"], joint = [998, 997] },
+    { name = "Spine", angles = ["Bend-Forward"], joint = [998, 997] },
+    { name = "L-Foot", angles = ["L-Ankle"], joint = [27, 31] },
+    { name = "R-Foot", angles = ["R-Ankle"], joint = [28, 32] },
 ]
 
 [feedback]
@@ -41,7 +43,10 @@ angles = [
     { name = "R-Knee",  points = [[24, 26, 28]] },
     { name = "L-Hip-Open", points = [[25, 23, 24], [11, 23, 25]] },
     { name = "R-Hip-Open", points = [[26, 24, 23], [12, 24, 26]] },
-    { name = "Spine-Alignment", points = [[7, 11, 23], [8, 12, 24]] },   
+    { name = "Bend-Forward", points = [[26, 24, 23], [25, 23, 24]] },
+    { name = "Spine-Alignment", points = [[999, 998, 997]] },
+    { name = "L-Ankle", points = [[25, 27, 31]] },
+    { name = "R-Ankle", points = [[26, 28, 32]] },
 ]
 
 show_labels = true

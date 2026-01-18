@@ -23,7 +23,7 @@ def draw_skeleton(image, pose_landmarks, config, targets, name_file: str|None=No
             line_color = get_joint_color(
                 idx1, idx2, 
                 angles, 
-                fb_settings["angles"], 
+                joint_connections, 
                 threshold=margin
             )
             
@@ -57,25 +57,27 @@ def draw_skeleton(image, pose_landmarks, config, targets, name_file: str|None=No
                 else f"{int(current_angle_value)}deg"
             )
 
-            cv2.putText(
-                image,
-                label,
-                text_pos,
-                cv2.FONT_HERSHEY_SIMPLEX,
-                fb_settings.get("text_scale", 0.5), # 0.2 is very small, 0.5 is better
-                line_color,
-                2,
-                cv2.LINE_AA
-            )
+            # cv2.putText(
+            #     image,
+            #     label,
+            #     text_pos,
+            #     cv2.FONT_HERSHEY_SIMPLEX,
+            #     fb_settings.get("text_scale", 0.5), # 0.2 is very small, 0.5 is better
+            #     line_color,
+            #     2,
+            #     cv2.LINE_AA
+            # )
 
     if name_file:
         folder_path = Path("poses" + name_file)
         folder_path.mkdir(parents=True, exist_ok=True)
         toml_file = folder_path / "pose.toml"
         data = {
-            "pose": { name: current_angle_value for name, current_angle_value in angles.items()}
+            "pose": {
+                name: float(angle_data["current_angle"])
+                for name, angle_data in angles.items()
+            }
         }
-
         with open(toml_file, "w", encoding="utf-8") as f:
             toml.dump(data, f)
         print(f"Pose data saved to {toml_file}")

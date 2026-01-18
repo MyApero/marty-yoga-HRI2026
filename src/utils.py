@@ -96,7 +96,7 @@ def get_angles_error_from_landmarks(coord_map, targets, angle_configs):
             continue
             
         # Average the angles (useful for multi-point definitions like Spine-Alignment)
-        avg_angle = sum(calculated_angles) / len(calculated_angles)
+        avg_angle = min(calculated_angles)
         
         # Calculate error relative to target from TOML
         target_angle = targets.get(name, None)
@@ -146,17 +146,18 @@ def get_joint_color(idx1, idx2, analysis_results, angle_configs, threshold=20):
 
     # 1. Find which angles in our results use idx1 or idx2
     # We look at the TOML angle_configs to see the point definitions
-    for config in angle_configs:
-        name = config["name"]
-        if name not in analysis_results:
-            continue
-            
+    for config in angle_configs:            
         # Check if idx1 or idx2 is in any of the point sets for this angle
         # config["points"] looks like [[11, 13, 15], ...]
-        for pts in config["points"]:
-            if idx1 in pts or idx2 in pts:
-                error = abs(analysis_results[name]["error"])
-                max_error = max(max_error, error)
+        if config["joint"].__contains__(idx1) and config["joint"].__contains__(idx2):
+            error = 0
+            for angle in config["angles"]:
+                angle_data = analysis_results.get(angle, None)
+                if not angle_data:
+                    continue
+                error += angle_data["error"]
+                if abs(error) > abs(max_error):
+                    max_error = error
                 found = True
     
     if not found:
