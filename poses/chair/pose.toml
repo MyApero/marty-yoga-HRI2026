@@ -5,3 +5,14 @@ L-Knee = 146
 R-Knee = 130
 L-Hip = 167
 R-Hip = 139
+
+[marty]
+LeftHip = 49
+LeftTwist = 0
+LeftKnee = 5
+RightHip = -53
+RightTwist = -1
+RightKnee = -6
+LeftArm = -66
+RightArm = 100
+Eyes = 0

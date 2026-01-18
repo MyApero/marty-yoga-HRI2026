@@ -1,0 +1,30 @@
+[description]
+context = ""
+howto = ""
+
+[pose]
+R-Wrist = 168.44
+L-Wrist = 171.2
+R-Elbow = 124.53
+L-Elbow = 178.01
+R-Shoulder = 23.05
+L-Shoulder = 15.66
+R-Knee = 175.88
+L-Knee = 168.85
+R-Hip = 90.51
+L-Hip = 94.83
+Spine = 90.51
+Spine-Alignment = 177.56
+R-Ankle = 162.93
+L-Ankle = 174.82
+
+[marty]
+LeftHip = 49
+LeftTwist = 1
+LeftKnee = 11
+RightHip = -53
+RightTwist = 1
+RightKnee = -8
+LeftArm = 143
+RightArm = 151
+Eyes = 0

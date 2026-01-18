@@ -72,3 +72,9 @@ Joint: L-Knee, Angle: 144
 Joint: R-Knee, Angle: 128
 Joint: L-Hip, Angle: 167
 Joint: R-Hip, Angle: 139
+
+
+## Setup
+https://github.com/thewh1teagle/kokoro-onnx/releases
+
+

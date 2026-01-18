@@ -186,6 +186,8 @@ class HeadMaster:
                 break
             if key == ord("c"):
                 self.name_files = str(time.time())
+            if key == ord("m"):
+                self.marty.load_and_do_pose(POSES_FOLDER + "warrior/pose.toml")
             if key == ord("f"):
                 self.voice.corrective_feedback()
             if key == ord("h"):

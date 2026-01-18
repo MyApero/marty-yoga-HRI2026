@@ -13,3 +13,15 @@ Bend-Forward = 115.99
 Spine-Alignment = 167.9
 L-Ankle = 153.03
 R-Ankle = 108.12
+
+[marty]
+LeftHip = 49
+LeftTwist = 0
+LeftKnee = 5
+RightHip = -53
+RightTwist = -1
+RightKnee = -6
+LeftArm = -66
+RightArm = 100
+Eyes = 0
+
