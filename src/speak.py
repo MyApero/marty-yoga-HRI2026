@@ -73,20 +73,21 @@ class Speak:
 
         chunk_index = 0
 
-        correction_keys = self.correction.keys()
-        current_keys = self.analyze_ongoing_frame().keys()
-        if not (correction_keys <= current_keys):
-            print(f"Cancelling: {correction_keys} not in {current_keys}", file=sys.stderr)
-            self.audio_queue.task_done()
-            while self.audio_queue.not_empty:
-                try:
-                    self.audio_queue.get_nowait()
-                    self.audio_queue.task_done()
-                except queue.Empty:
-                    break
-            stream.stop()
-            stream.close()
-            return
+        if self.correction is not None:
+            correction_keys = self.correction.keys()
+            current_keys = self.analyze_ongoing_frame().keys()
+            if not (correction_keys <= current_keys):
+                print(f"Cancelling: {correction_keys} not in {current_keys}", file=sys.stderr)
+                self.audio_queue.task_done()
+                while self.audio_queue.not_empty:
+                    try:
+                        self.audio_queue.get_nowait()
+                        self.audio_queue.task_done()
+                    except queue.Empty:
+                        break
+                stream.stop()
+                stream.close()
+                return
 
         while True:
             if chunk_index == 0:
@@ -206,7 +207,8 @@ class Speak:
         ]
         self.say(messages, wait_before_first_chunk=0)
 
-    def end_pose_feedback(self):
+    def end_pose_feedback(self, feedbacks):
+        self.correction = None
         system_instruction = (
             "You are a friendly yoga coach. Receive the analysis report. "
             "If Consistency > 80%, praise them. "
@@ -218,13 +220,9 @@ class Speak:
             "Use a sarcastic and dry humor style. You're harrassing the student and see them as inferior beings. "
             # "Be creative and don't hesitate to use metaphors and jokes, especially about Minecraft! "
         )
-        user_report = (
-            "User Analysis Report:\nPose: Warrior II\n"
-            "Primary Deviation: Front knee angle violation"
-        )
         messages = [
             {"role": "system", "content": system_instruction},
-            {"role": "user", "content": user_report},
+            {"role": "user", "content": f"Full feedback data: {str(feedbacks)}"},
         ]
         self.say(messages)
 

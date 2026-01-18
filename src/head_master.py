@@ -10,6 +10,7 @@ from src.marty import MyMarty
 from src.speak import Speak
 import logging
 import sys
+import toml
 
 # Initial Setup
 CONFIG_FILE = "config.toml"
@@ -116,7 +117,9 @@ class HeadMaster:
                 #     mistakes["timed_mistake"] + timed_mistaked
                 #     > 7.0 * mistakes["remider_done"]
                 # ):
-                correction_to_do[angle_name + ' target:' + str(round(mistakes["target_angle"]))] = "current:" + str(round(mistakes["current_angle"]))
+                correction_to_do[
+                    angle_name + " target:" + str(round(mistakes["target_angle"]))
+                ] = "current:" + str(round(mistakes["current_angle"]))
                 mistakes["remider_done"] += 1
                 # mistakes["mistakes"][-1].append(elapsed)
         return correction_to_do
@@ -193,6 +196,12 @@ class HeadMaster:
             elapsed_time,
             self.config["feedback"]["max_error_margin"],
         )
+
+        feedbacks['pose_name'] = self.pose_name
+        self.voice.end_pose_feedback(toml.dumps(feedbacks))
+
+        while self.voice.is_done() is False:
+            pass
 
     def cleanup(self):
         self.camera.release()
