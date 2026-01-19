@@ -202,10 +202,31 @@ class Speak:
     def goodbye(self):
         print("Marty says goodbye!")
 
+    def start_counter(self):
+        # TODO: Ask antoine what does he wamnt to do
+        # TODO: Run a preload .wav saying Are you ready ? 3... 2... 1... Go
+        return
+        sd.play(data, sr)
+        sd.wait()
+
+
+    def show_pose(self, pose):
+        system_instruction = (
+            "You are a friendly yoga coach. Explain how the student should pose. "
+            "Keep it simple in 3 sentences of 20 words, 1 for the uper part of the body, on for the global position and one for the lower part"
+            "Make it like you were in a discution"
+        )
+        messages = [
+            {"role": "system", "content": system_instruction},
+            {"role": "user", "content": f"Pose details: {str(pose['description'])}"},
+        ]
+        self.say(messages)
+
     def load_pose(self, pose):
         system_instruction = (
             "You are a friendly yoga coach. Introduce the pose to the student, briefly describing it while being encouraging. "
             "Keep it to 3 sentences max. with max sentence length of 20 words. "
+            "At the end say that you will demonstrate the pose in question"
         )
         messages = [
             {"role": "system", "content": system_instruction},

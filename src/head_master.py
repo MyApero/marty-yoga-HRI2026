@@ -15,7 +15,7 @@ from src.camera import capture_image_from_camera
 # Initial Setup
 CONFIG_FILE = "config.toml"
 POSES_FOLDER = "poses/"
-POSES_LIST = ["warrior", "chair", "mountain"]
+POSES_LIST = ["right_warrior2", "left_warrior2", "chair", "mountain"]
 
 MARGIN_BEFORE_CORRECTION_FEEDBACK_S = 5
 
@@ -208,12 +208,34 @@ class HeadMaster:
         timestamp = int(time.time() * 1000)
         return self.landmarker.detect_for_video(image, timestamp)
 
-    def load_pose(self, pose):
-        self.pose_name = pose
-        self.voice.load_pose(self.poses[pose])
+
+    def do_exercise(self, pose: str):
+        self.load_pose(pose)
+        feedback = self.do_pose()
+        print()
+        print("Feedback:", feedback)
+
+    def wait(self):
         while not self.voice.is_done():
             self.update_window(show_landmarks=False)
-            key = cv2.waitKey(1) & 0xFF
+            _ = cv2.waitKey(1) & 0xFF
+
+    def load_pose(self, pose):
+        self.pose_name = pose
+        # self.voice.load_pose(self.poses[pose])
+        # self.wait()
+
+        self.voice.show_pose(self.poses[pose])
+        if self.marty is None:
+            print("No Marty")
+        else:
+            self.marty.load_and_do_pose(POSES_FOLDER + pose + "/pose.toml")
+        self.wait()
+
+        self.marty.load_and_do_pose(POSES_FOLDER + "mountain/pose.toml")
+        self.voice.start_counter()
+        self.wait()
+        
 
     def do_pose(self):
         start_time = time.time()

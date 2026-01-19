@@ -24,12 +24,12 @@ R-Ankle = 176.57
 L-Ankle = 163.51
 
 [marty]
-LeftHip = 49
-LeftTwist = -4
-LeftKnee = 10
-RightHip = -53
-RightTwist = 41
-RightKnee = 6
-LeftArm = 93
-RightArm = -62
+LeftHip = 45
+LeftTwist = 0
+LeftKnee = 0
+RightHip = -45
+RightTwist = 40
+RightKnee = 15
+LeftArm = 90
+RightArm = -150
 Eyes = 1

@@ -1,9 +1,11 @@
 import cv2
 
 from src.head_master import HeadMaster
+from src.utils import load_toml
 
 def main():
-    master = HeadMaster(camera_index=2)
+    CONFIG_FILE = "config.toml"
+    master = HeadMaster(camera_index=load_toml(CONFIG_FILE)["camera"])
 
     # Detect key press to start presentation
     while True:
@@ -15,10 +17,10 @@ def main():
             master.cleanup()
             break
         if key == ord("d"):  # Press 'd' to demo yoga
-            master.load_pose("mountain")
-            feedback = master.do_pose()
-            print()
-            print("Feedback:", feedback)
+            master.do_exercise("right_warrior2")
+            master.do_exercise("left_warrior2")
+            master.do_exercise("mountain")
+            master.do_exercise("chair")
         master.process_image()
 
 

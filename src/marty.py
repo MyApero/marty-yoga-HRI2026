@@ -42,12 +42,13 @@ class MyMarty(Marty):
             except Exception as e:
                 print(f"Marty Error: {e}", file=sys.stderr)
 
-    def load_pose(self, file: str):
+    def load_pose(self, file: str|dict):
         """
         Translates custom PascalCase pose dict to Marty format and moves.
         """
         translated_pose = {}
-        joint_pose = toml.load(file)["marty"]
+        print(file)
+        joint_pose = toml.load(file)["marty"] if isinstance(file, str) else file["marty"]
 
         mapping = {
         "LeftHip": "left hip",
@@ -69,7 +70,7 @@ class MyMarty(Marty):
     
 
 
-    def load_and_do_pose(self, file:str, duration:int=1000):
+    def load_and_do_pose(self, file:str|dict, duration:int=1000):
         pose = self.load_pose(file)
         for key, value in pose.items():
             self.interaction(key, value, value, False, duration)
