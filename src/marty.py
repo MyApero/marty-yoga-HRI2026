@@ -25,7 +25,7 @@ class MyMarty(Marty):
         if not self.is_conn_ready():
             print("Marty is not connected!")
 
-        self.queue.put((DEFAULT_ANGLES, 100, False))
+        self.load_pose("poses/mountain/pose.toml")
 
     def get_pose(self):
         all_joints = self.get_joints()
@@ -67,7 +67,6 @@ class MyMarty(Marty):
                 translated_pose[mapping[custom_key]] = value
         
         return translated_pose
-    
 
 
     def load_and_do_pose(self, file:str|dict, duration:int=1000):
