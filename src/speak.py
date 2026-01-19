@@ -212,9 +212,9 @@ class Speak:
 
     def show_pose(self, pose):
         system_instruction = (
-            "You are a friendly yoga coach. Explain how the student should pose. "
-            "Keep it simple in 3 sentences of 20 words, 1 for the uper part of the body, on for the global position and one for the lower part"
-            "Make it like you were in a discution"
+            "You are a friendly yoga coach. Explain how the student should pose briefly showing the key position to adopt while being friendly. "
+            "Keep it to 3 sentences max. with max sentence length of 20 words. "
+            "Start saying something like as you can see..."
         )
         messages = [
             {"role": "system", "content": system_instruction},
