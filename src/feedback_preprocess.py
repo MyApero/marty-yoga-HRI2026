@@ -33,6 +33,9 @@ def get_pose_validity(actual_run, feedback_summary):
             angles[angle_name]["angle"].append(angle_data["current_angle"])
 
     for angle_name in angles:
+        if not angles[angle_name]["angle"]:
+            continue
+
         angles[angle_name]["minimum"] = min(angles[angle_name]["angle"])
         angles[angle_name]["maximum"] = max(angles[angle_name]["angle"])
         angles[angle_name]["mean"] = sum(angles[angle_name]["angle"]) / len(
@@ -40,9 +43,12 @@ def get_pose_validity(actual_run, feedback_summary):
         )
         del angles[angle_name]["angle"]
 
-    # difference between mean_angle and target_angle
     for angle_name in angles:
-        error = round(abs(angles[angle_name]["mean"] - angles[angle_name]["target"]), 2)
+        target = angles[angle_name]["target"]
+        if target is None:
+            feedback_summary[angle_name]["Validity"] = "N/A"
+            continue
+        error = round(abs(angles[angle_name]["mean"] - target), 2)
         feedback_summary[angle_name]["Validity"] = "Valid" if error < 10 else "Invalid"
 
 
