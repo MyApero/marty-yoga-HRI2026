@@ -69,6 +69,7 @@ class HeadMaster:
 
         return Speak(
             move_marty_callback,
+            True,
             self.analyze_ongoing_frame,
             generated_text_callback,
             can_i_speak=lambda: self.pose_ended or not self.is_pose_ending,
@@ -208,7 +209,6 @@ class HeadMaster:
         timestamp = int(time.time() * 1000)
         return self.landmarker.detect_for_video(image, timestamp)
 
-
     def do_exercise(self, pose: str):
         self.load_pose(pose)
         feedback = self.do_pose()
@@ -218,24 +218,31 @@ class HeadMaster:
     def wait(self):
         while not self.voice.is_done():
             self.update_window(show_landmarks=False)
-            _ = cv2.waitKey(1) & 0xFF
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord("q"):
+                break
+
+    def reset_marty_pos(self):
+        if self.marty:
+            self.marty.load_and_do_pose(POSES_FOLDER + "mountain/pose.toml")
 
     def load_pose(self, pose):
         self.pose_name = pose
-        # self.voice.load_pose(self.poses[pose])
-        # self.wait()
+        self.voice.load_pose(self.poses[pose])
+        self.wait()
+
+        self.voice.move_marty_enabled = False
 
         self.voice.show_pose(self.poses[pose])
-        if self.marty is None:
-            print("No Marty")
-        else:
+        if self.marty:
             self.marty.load_and_do_pose(POSES_FOLDER + pose + "/pose.toml")
         self.wait()
 
-        self.marty.load_and_do_pose(POSES_FOLDER + "mountain/pose.toml")
+        self.reset_marty_pos()
         self.voice.start_counter()
         self.wait()
-        
+
+        self.voice.move_marty_enabled = True
 
     def do_pose(self):
         start_time = time.time()

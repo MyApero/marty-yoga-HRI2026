@@ -6,6 +6,7 @@ import queue
 import re
 import time
 import sys
+import soundfile as sf
 
 # --- Configuration ---
 VOICE_NAME = "am_michael"
@@ -18,11 +19,13 @@ class Speak:
     def __init__(
         self,
         move_marty_callback,
+        move_marty_enabled,
         analyze_ongoing_frame,
         generated_text_callback=lambda text: None,
         can_i_speak=lambda: True,
     ):
         self.move_marty_callback = move_marty_callback
+        self.move_marty_enabled = move_marty_enabled
         self.analyze_ongoing_frame = analyze_ongoing_frame
         self.generated_text_callback = generated_text_callback
         self.can_i_speak = can_i_speak
@@ -48,7 +51,7 @@ class Speak:
         self.stream = sd.OutputStream(
             samplerate=SAMPLE_RATE, channels=1, dtype="float32"
         )
-        
+
         self.active_tasks = 0
         self.lock = threading.Lock()
 
@@ -129,7 +132,7 @@ class Speak:
 
     def _play_chunk(self, stream, chunk):
         duration = len(chunk) / SAMPLE_RATE
-        if self.move_marty_callback:
+        if self.move_marty_enabled and self.move_marty_callback:
             self.move_marty_callback(duration)
         stream.write(chunk)
 
@@ -203,12 +206,45 @@ class Speak:
         print("Marty says goodbye!")
 
     def start_counter(self):
-        # TODO: Ask antoine what does he wamnt to do
-        # TODO: Run a preload .wav saying Are you ready ? 3... 2... 1... Go
-        return
-        sd.play(data, sr)
-        sd.wait()
+        """
+        Loads a wav file, resamples it to match the stream,
+        and injects it directly into the audio queue.
+        """
+        file_path = "assets/countdown.wav"
 
+        try:
+            data, fs = sf.read(file_path, dtype="float32")
+            # if fs != SAMPLE_RATE:
+            #     number_of_samples = round(len(data) * float(SAMPLE_RATE) / fs)
+            #     data = np.interp(
+            #         np.linspace(0.0, 1.0, number_of_samples, endpoint=False),
+            #         np.linspace(0.0, 1.0, len(data)),
+            #         data
+            #     )
+
+            # if len(data.shape) > 1:
+            #     data = np.mean(data, axis=1)
+
+            with self.lock:
+                self.active_tasks += 1
+
+            self.current_utterance_done_event.clear()
+
+            self.audio_queue.put(data)
+            self.audio_queue.put(None)
+            def cleanup_worker():
+                self.current_utterance_done_event.wait()
+                with self.lock:
+                    self.active_tasks = max(0, self.active_tasks - 1)
+
+            threading.Thread(target=cleanup_worker, daemon=True).start()
+
+            print(f"Playing {file_path}", file=sys.stderr)
+
+        except FileNotFoundError:
+            print(f"Error: {file_path} not found.", file=sys.stderr)
+        except Exception as e:
+            print(f"Error in start_counter: {e}", file=sys.stderr)
 
     def show_pose(self, pose):
         system_instruction = (
