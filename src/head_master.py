@@ -1,5 +1,4 @@
 import cv2
-import mediapipe as mp
 import os
 import time
 from src.utils import load_toml
@@ -11,11 +10,14 @@ from src.speak import Speak
 import logging
 import sys
 import toml
+from src.camera import capture_image_from_camera
 
 # Initial Setup
 CONFIG_FILE = "config.toml"
 POSES_FOLDER = "poses/"
 POSES_LIST = ["warrior", "chair", "mountain"]
+
+MARGIN_BEFORE_CORRECTION_FEEDBACK_S = 5
 
 
 class HeadMaster:
@@ -66,18 +68,11 @@ class HeadMaster:
             print("Generated Text:", text)
 
         return Speak(
-            move_marty_callback, self.analyze_ongoing_frame, generated_text_callback, can_i_speak=lambda: self.pose_ended or not self.is_pose_ending
+            move_marty_callback,
+            self.analyze_ongoing_frame,
+            generated_text_callback,
+            can_i_speak=lambda: self.pose_ended or not self.is_pose_ending,
         )
-
-    def capture_image_from_camera(self):
-        success, frame = self.camera.read()
-        if not success:
-            raise RuntimeError("Failed to read from camera.")
-
-        frame = cv2.flip(frame, 1)
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
-        return mp_image
 
     def filter_image(self, image):
         return apply_film_effect(image.numpy_view(), self.config["film_settings"])
@@ -122,10 +117,22 @@ class HeadMaster:
                 # mistakes["mistakes"][-1].append(elapsed)
         return correction_to_do
 
-    def process_image(
-        self, show_landmarks=False, timer_text="", elapsed=0.0
-    ):
-        camera_image = self.capture_image_from_camera()
+    def update_correction_feedback(self):
+        if self.is_pose_ending or not self.voice.is_done():
+            return
+        correction = self.analyze_ongoing_frame()
+        if bool(correction):
+            print(correction)
+            self.voice.correction = correction
+            self.voice.corrective_feedback(correction, self.poses[self.pose_name])
+
+    def update_window(self, show_landmarks=False, timer_text="", elapsed=0.0):
+        self.process_image(show_landmarks, timer_text, elapsed)
+        if elapsed > MARGIN_BEFORE_CORRECTION_FEEDBACK_S:
+            self.update_correction_feedback()
+
+    def process_image(self, show_landmarks=False, timer_text="", elapsed=0.0):
+        camera_image = capture_image_from_camera(self.camera)
         output_frame = self.filter_image(camera_image)
         if show_landmarks:
             result = self.analyze_image(camera_image)
@@ -141,16 +148,6 @@ class HeadMaster:
                     )
                 )
             self.update_ongoing_frame(elapsed)
-            correction = self.analyze_ongoing_frame()
-            if (
-                not self.is_pose_ending
-                and bool(correction)
-                and self.voice.is_done()
-                and elapsed > 2.0
-            ):
-                print(correction, elapsed)
-                self.voice.correction = correction
-                self.voice.corrective_feedback(correction, self.poses[self.pose_name])
             cv2.putText(
                 output_frame,
                 timer_text,
@@ -161,35 +158,44 @@ class HeadMaster:
                 2,
             )
 
+        self.draw_overlays(output_frame)
+
+        frame = cv2.resize(
+            output_frame, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC
+        )
+        cv2.imshow("Video Feedback", frame)
+        self.name_files = None
+
+    def draw_overlays(self, frame):
         if self.voice.generated_text:
             cv2.rectangle(
-                output_frame,
-                (5, output_frame.shape[0] - 40),
-                (output_frame.shape[1] - 5, output_frame.shape[0] - 5),
+                frame,
+                (5, frame.shape[0] - 40),
+                (frame.shape[1] - 5, frame.shape[0] - 5),
                 (0, 0, 0),
                 -1,
             )
             # Show only last 19 words
             showed_text = " ".join(self.voice.generated_text.split()[-19:])
             cv2.putText(
-                output_frame,
+                frame,
                 showed_text,
-                (10, output_frame.shape[0] - 20),
+                (10, frame.shape[0] - 20),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,
                 (255, 255, 255),
                 2,
             )
-        if True: # Debug mode
+        if True:  # Debug mode
             cv2.rectangle(
-                output_frame,
+                frame,
                 (5, 5),
                 (600, 40),
                 (0, 0, 0),
                 -1,
             )
             cv2.putText(
-                output_frame,
+                frame,
                 f"Voice Queue: {self.voice.text_queue.qsize()}, Audio Queue: {self.voice.audio_queue.qsize()}, request Queue: {self.voice.request_queue.qsize()}",
                 (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX,
@@ -197,12 +203,6 @@ class HeadMaster:
                 (255, 255, 255),
                 2,
             )
-
-        frame = cv2.resize(
-            output_frame, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC
-        )
-        cv2.imshow("Video Feedback", frame)
-        self.name_files = None
 
     def analyze_image(self, image):
         timestamp = int(time.time() * 1000)
@@ -212,7 +212,7 @@ class HeadMaster:
         self.pose_name = pose
         self.voice.load_pose(self.poses[pose])
         while not self.voice.is_done():
-            self.process_image(show_landmarks=False)
+            self.update_window(show_landmarks=False)
             key = cv2.waitKey(1) & 0xFF
 
     def do_pose(self):
@@ -241,7 +241,7 @@ class HeadMaster:
                 time.sleep(0.1)
                 self.voice.end_pose_feedback(feedback_dump)
 
-            self.process_image(
+            self.update_window(
                 show_landmarks=True,
                 timer_text=timer_text,
                 elapsed=elapsed_time,
