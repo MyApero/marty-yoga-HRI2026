@@ -48,6 +48,9 @@ class Speak:
         self.stream = sd.OutputStream(
             samplerate=SAMPLE_RATE, channels=1, dtype="float32"
         )
+        
+        self.active_tasks = 0
+        self.lock = threading.Lock()
 
         # --- Initialize Threads ONCE ---
         # 1. TTS Worker
@@ -90,20 +93,21 @@ class Speak:
                 self.audio_queue.task_done()
                 continue
 
-            while not self.can_i_speak():
-                time.sleep(0.1)
             self.stream.start()
-            # Play first chunk
-            self._play_chunk(self.stream, first_chunk)
-            self.audio_queue.task_done()
 
-            # Loop for subsequent chunks until None
+            is_first_chunk = True
             while True:
-                audio_chunk = self.audio_queue.get()
+                while not self.can_i_speak():
+                    time.sleep(0.1)
+                if is_first_chunk:
+                    audio_chunk = first_chunk
+                    is_first_chunk = False
+                else:
+                    audio_chunk = self.audio_queue.get()
 
                 if audio_chunk is None:
                     self.audio_queue.task_done()
-                    break  # End of this utterance
+                    break
 
                 if self.correction is not None:
                     current_keys = self.analyze_ongoing_frame().keys()
@@ -133,22 +137,24 @@ class Speak:
         """Manages the lifecycle of a request."""
         while True:
             request = self.request_queue.get()
-            messages = request
+            messages, model = request
             self.current_utterance_done_event.clear()
 
-            self._run_ollama_generation(messages)
+            self._run_ollama_generation(messages, model)
             self.text_queue.put(None)
             self.current_utterance_done_event.wait()
+            with self.lock:
+                self.active_tasks = max(0, self.active_tasks - 1)
 
             self.request_queue.task_done()
 
-    def _run_ollama_generation(self, messages):
+    def _run_ollama_generation(self, messages, model):
         """
         Generates text from Ollama and pushes sentences to text_queue.
         """
         try:
             stream = ollama.chat(
-                model="llama3.2",
+                model=model,
                 messages=messages,
                 stream=True,
             )
@@ -181,12 +187,14 @@ class Speak:
 
     # --- Wrapper methods for your main logic ---
 
-    def say(self, messages):
+    def say(self, messages, model="llama3.1"):
         """
         Non-blocking call. Queues the message and returns immediately.
         """
-        self.generated_text = ""
-        self.request_queue.put((messages))
+        with self.lock:
+            self.generated_text = ""
+            self.active_tasks += 1
+        self.request_queue.put((messages, model))
 
     def presentation(self):
         print("Marty is presenting!")
@@ -194,20 +202,30 @@ class Speak:
     def goodbye(self):
         print("Marty says goodbye!")
 
-    def corrective_feedback(self, correction: dict, pose):
-        print("\n[Main Thread] Adding corrective feedback to queue...")
+    def load_pose(self, pose):
         system_instruction = (
-            "You are a yoga coach. Receive the corrective feedback. "
-            "Keep it to 1 sentences max. with max sentence length of 15 words. Be very concise and use only useful words. "
+            "You are a friendly yoga coach. Introduce the pose to the student, briefly describing it while being encouraging. "
+            "Keep it to 3 sentences max. with max sentence length of 20 words. "
+        )
+        messages = [
+            {"role": "system", "content": system_instruction},
+            {"role": "user", "content": f"Pose details: {str(pose['description'])}"},
+        ]
+        self.say(messages)
+
+    def corrective_feedback(self, correction: dict, pose):
+        system_instruction = (
+            "You are a yoga coach. Receive the corrective feedback. You're inside of a discussion, no mention similar to 'during this pose'. "
+            "Keep it to 1 sentences max with max sentence length of 15 words. Be very concise, only useful words. "
             "Don't mention the numbers. No asterisks, No parentheses."
-            "Speak in the present tense and address the student directly without a name. Don't use 'throughout'."
+            "Speak in the present tense and address the student directly without his name. Be creative."
         )
         messages = [
             {"role": "system", "content": system_instruction},
             {"role": "system", "content": f"Pose details: {str(pose['description'])}"},
             {"role": "user", "content": str(correction)},
         ]
-        self.say(messages)
+        self.say(messages, model="llama3.2")
 
     def end_pose_feedback(self, feedbacks):
         self.empty_queues()
@@ -215,8 +233,8 @@ class Speak:
         self.generated_text = ""
         system_instruction = (
             "You are a friendly yoga coach. Receive the analysis report. "
-            "Keep it to 2 sentences max. with max sentence length of 20 words. "
-            "Highlight the weak points and suggest one improvement tip. "
+            "Keep it to 3 sentences max with max sentence length of 20 words. "
+            "Highlight the weak points and suggest one improvement tip. Be encouraging and positive. "
             "No numbers, no asterisks and no parentheses."
             "You can use metaphors if needed. "
         )
@@ -228,11 +246,11 @@ class Speak:
         self.say(messages)
 
     def is_done(self):
-        return (
-            self.request_queue.empty()
-            and self.text_queue.empty()
-            and self.audio_queue.empty()
-        )
+        """
+        Checks if there are any active tasks in the queues.
+        """
+        with self.lock:
+            return self.active_tasks == 0
 
     def wait_until_done(self):
         """
@@ -265,4 +283,5 @@ class Speak:
             except queue.Empty:
                 break
         self.current_utterance_done_event.set()
-        print("[Main Thread] All queues have been emptied.")
+        with self.lock:
+            self.active_tasks = 0

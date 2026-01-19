@@ -126,32 +126,31 @@ class HeadMaster:
         self, show_landmarks=False, timer_text="", elapsed=0.0
     ):
         camera_image = self.capture_image_from_camera()
+        output_frame = self.filter_image(camera_image)
         if show_landmarks:
             result = self.analyze_image(camera_image)
-        output_frame = self.filter_image(camera_image)
-        if show_landmarks and result.pose_landmarks:
-            self.actual_run.append(
-                draw_skeleton(
-                    output_frame,
-                    result.pose_landmarks,
-                    self.config,
-                    self.poses[self.pose_name]["pose"],
-                    self.name_files,
-                    self.marty,
+            if result.pose_landmarks:
+                self.actual_run.append(
+                    draw_skeleton(
+                        output_frame,
+                        result.pose_landmarks,
+                        self.config,
+                        self.poses[self.pose_name]["pose"],
+                        self.name_files,
+                        self.marty,
+                    )
                 )
-            )
-        self.update_ongoing_frame(elapsed)
-        correction = self.analyze_ongoing_frame()
-        if (
-            not self.is_pose_ending
-            and bool(correction)
-            and self.voice.is_done()
-            and elapsed > 2.0
-        ):
-            print(correction, elapsed)
-            self.voice.correction = correction
-            self.voice.corrective_feedback(correction, self.poses[self.pose_name])
-        if show_landmarks:
+            self.update_ongoing_frame(elapsed)
+            correction = self.analyze_ongoing_frame()
+            if (
+                not self.is_pose_ending
+                and bool(correction)
+                and self.voice.is_done()
+                and elapsed > 2.0
+            ):
+                print(correction, elapsed)
+                self.voice.correction = correction
+                self.voice.corrective_feedback(correction, self.poses[self.pose_name])
             cv2.putText(
                 output_frame,
                 timer_text,
@@ -211,6 +210,10 @@ class HeadMaster:
 
     def load_pose(self, pose):
         self.pose_name = pose
+        self.voice.load_pose(self.poses[pose])
+        while not self.voice.is_done():
+            self.process_image(show_landmarks=False)
+            key = cv2.waitKey(1) & 0xFF
 
     def do_pose(self):
         start_time = time.time()
@@ -235,6 +238,7 @@ class HeadMaster:
                 feedbacks["pose_name"] = self.pose_name
                 feedback_dump = toml.dumps(feedbacks)
                 print(feedback_dump)
+                time.sleep(0.1)
                 self.voice.end_pose_feedback(feedback_dump)
 
             self.process_image(

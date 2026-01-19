@@ -27,7 +27,7 @@ joint_connections = [
     { name = "Left Leg", angles = ["Left Knee", "Left Hip"], joint = [24, 26] },
     { name = "Hips", angles = ["Right Hip", "Left Hip"], joint = [23, 24] },
     { name = "Shoulders", angles = ["Right Shoulder", "Left Shoulder"], joint = [11, 12] },
-    { name = "Neck", angles = ["Spine-Alignment"], joint = [999, 998] },
+    { name = "Neck", angles = ["Spine Alignment"], joint = [999, 998] },
     { name = "Spine", angles = ["Spine"], joint = [998, 997] },
     { name = "Right Foot", angles = ["Right Ankle"], joint = [27, 31] },
     { name = "Left Foot", angles = ["Left Ankle"], joint = [28, 32] },
@@ -46,11 +46,11 @@ angles = [
     { name = "Right Hip", points = [[25, 23, 24], [11, 23, 25]] },
     { name = "Left Hip", points = [[26, 24, 23], [12, 24, 26]] },
     { name = "Spine", points = [[26, 24, 23], [25, 23, 24]] },
-    { name = "Spine-Alignment", points = [[999, 998, 997]] },
+    { name = "Spine Alignment", points = [[999, 998, 997]] },
     { name = "Right Ankle", points = [[25, 27, 31]] },
     { name = "Left Ankle", points = [[26, 28, 32]] },
 ]
 
 show_labels = true
 text_scale = 0.5
-max_error_margin = 20.0 # 0 deg = Green, 10+ deg = Red
+max_error_margin = 22.0 # 0 deg = Green, 10+ deg = Red
