@@ -13,6 +13,21 @@ DEFAULT_ANGLES = {
     "right twist": 0,
     "left twist": 0,
     "eyes": 0,
+    "left hip": 0,
+    "right hip": 0    
+}
+
+
+MAPPING = {
+    "LeftHip": "left hip",
+    "LeftTwist": "left twist",
+    "LeftKnee": "left knee",
+    "RightHip": "right hip",
+    "RightTwist": "right twist",
+    "RightKnee": "right knee",
+    "LeftArm": "left arm",
+    "RightArm": "right arm",
+    "Eyes": "eyes"
 }
 
 
@@ -25,7 +40,7 @@ class MyMarty(Marty):
         if not self.is_conn_ready():
             print("Marty is not connected!")
 
-        self.load_pose("poses/mountain/pose.toml")
+        self.queue.put((DEFAULT_ANGLES, 1000, False))
 
     def get_pose(self):
         all_joints = self.get_joints()
@@ -50,23 +65,12 @@ class MyMarty(Marty):
         print(file)
         joint_pose = toml.load(file)["marty"] if isinstance(file, str) else file["marty"]
 
-        mapping = {
-        "LeftHip": "left hip",
-        "LeftTwist": "left twist",
-        "LeftKnee": "left knee",
-        "RightHip": "right hip",
-        "RightTwist": "right twist",
-        "RightKnee": "right knee",
-        "LeftArm": "left arm",
-        "RightArm": "right arm",
-        "Eyes": "eyes"
-        }
-
         for custom_key, value in joint_pose.items():
-            if custom_key in mapping:
-                translated_pose[mapping[custom_key]] = value
+            if custom_key in MAPPING:
+                translated_pose[MAPPING[custom_key]] = value
         
         return translated_pose
+    
 
 
     def load_and_do_pose(self, file:str|dict, duration:int=1000):
