@@ -17,10 +17,10 @@ def main():
             master.cleanup()
             break
         if key == ord("d"):  # Press 'd' to demo yoga
-            master.do_exercise("right_warrior2")
-            master.do_exercise("left_warrior2")
-            master.do_exercise("mountain")
             master.do_exercise("chair")
+            master.do_exercise("left_warrior2")
+            # master.do_exercise("right_warrior2")
+            # master.do_exercise("mountain")
         master.process_image()
 
 

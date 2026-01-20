@@ -9,8 +9,11 @@
   - [ ] Back (bend forward/backward)
   - [ ] Ankles (twist left/right)
 
+- [ ] Bonus: Selecting a number by turning eyes or arm and showing the feedback with number of LEDs on eyes
 
 # Marty's role as a coach
+- [ ] Present himself at the beginning
+- [ ] Bonus: Select a voice for Marty
 - [ ] Bonus: Personalized user (tired, improving fast, remembering user's name)
 
 # Global architecture
@@ -28,6 +31,7 @@ graph TD
 
 ## Using Mediapipe
 - [x] Getting landmarks from video feed.
+- [ ] 
 - [ ] Bigger screen
 
 ## Poses analysis algorithm
@@ -36,21 +40,38 @@ Video feedback
 - [x] Analyzing incoming landmarks against target poses
 - [x] Coloring landmarks and joints
 - [ ] Déclencher corrective feedback when incorrect for more than 5 seconds
-- [ ] Déclencher long feedback when correct for more than 30 seconds
+- [x] Déclencher long feedback when correct for more than 30 seconds
 - [ ] Bonus: Using 3D landmarks
 
 ## Corrective LLM Feedback
-- [ ] Use non verbal marty communication
+- [x] Use non verbal marty communication
 - [ ] Bonus: Different prompt regarding our prior situation analysis (e.g. very high error)
 - [ ] Prerecord voice and marty poses for common corrections (e.g. arms too low, back not straight)
 
+## Camera
+- [x] Use laptop camera
+- [ ] Use phone large angle camera connecting via wifi to have video feedback next to Marty
+
 ## LLM Feedback
 - [ ] Prompt engineering
+- [ ] Poses description
 - [ ] Bonus: {user name} {number of correction done} {time spent}
 
 ## TTS
 - [x] TTS macos instant
-- [ ] Bonus: Emotional TTS like CosyVoice
+- [x] Kokoro high quality low latency TTS
+- [x] Bonus: Emotional TTS like CosyVoice -> Way too slow to run it at runtime
+
+# Code structure
+- [ ] use window.py for window operations
+
+# Run locally
+Use the environment variable `HF_HUB_OFFLINE=1` to run the code without internet connection.
+
+# Going further
+
+- [ ] Explore this setup for exercices at home (planks, push-ups, squats, etc.)
+  - It could evaluate planks as a static pose and upper part of push-ups and bottom part of squats as static poses. It could also count the number of repetitions.
 
 # Optimizations
 

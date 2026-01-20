@@ -14,7 +14,7 @@ DEFAULT_ANGLES = {
     "left twist": 0,
     "eyes": 0,
     "left hip": 0,
-    "right hip": 0    
+    "right hip": 0,
 }
 
 
@@ -27,7 +27,7 @@ MAPPING = {
     "RightKnee": "right knee",
     "LeftArm": "left arm",
     "RightArm": "right arm",
-    "Eyes": "eyes"
+    "Eyes": "eyes",
 }
 
 
@@ -45,7 +45,7 @@ class MyMarty(Marty):
     def get_pose(self):
         all_joints = self.get_joints()
 
-        pose_data = {info['name']: info['pos'] for info in all_joints.values()}
+        pose_data = {info["name"]: info["pos"] for info in all_joints.values()}
         return pose_data
 
     def marty_worker(self):
@@ -57,29 +57,29 @@ class MyMarty(Marty):
             except Exception as e:
                 print(f"Marty Error: {e}", file=sys.stderr)
 
-    def load_pose(self, file: str|dict):
+    def load_pose(self, file: str | dict):
         """
         Translates custom PascalCase pose dict to Marty format and moves.
         """
         translated_pose = {}
-        print(file)
-        joint_pose = toml.load(file)["marty"] if isinstance(file, str) else file["marty"]
+        joint_pose = (
+            toml.load(file)["marty"] if isinstance(file, str) else file["marty"]
+        )
 
         for custom_key, value in joint_pose.items():
             if custom_key in MAPPING:
                 translated_pose[MAPPING[custom_key]] = value
-        
+
         return translated_pose
-    
 
-
-    def load_and_do_pose(self, file:str|dict, duration:int=1000):
+    def load_and_do_pose(self, file: str | dict, duration: int = 2000):
         pose = self.load_pose(file)
         for key, value in pose.items():
             self.interaction(key, value, value, False, duration)
 
-
-    def interaction(self, side, height_min, height_max, bloking:bool, duration:int|None=None):
+    def interaction(
+        self, side, height_min, height_max, bloking: bool, duration: int | None = None
+    ):
         arm_height = random.randint(height_min, height_max)
         if duration is None:
             duration = arm_height * 7

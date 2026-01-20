@@ -115,7 +115,6 @@ class HeadMaster:
                     angle_name + " target:" + str(round(mistakes["target_angle"]))
                 ] = "current:" + str(round(mistakes["current_angle"]))
                 mistakes["remider_done"] += 1
-                # mistakes["mistakes"][-1].append(elapsed)
         return correction_to_do
 
     def update_correction_feedback(self):
@@ -216,7 +215,19 @@ class HeadMaster:
         print("Feedback:", feedback)
 
     def wait(self):
+        """Waits until all voice tasks are done, updating GUI."""
         while not self.voice.is_done():
+            self.update_window(show_landmarks=False)
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord("q"):
+                break
+
+    def wait_for_event(self, event):
+        """
+        Waits for a specific event (utterance completion),
+        while keeping the GUI updated.
+        """
+        while not event.is_set():
             self.update_window(show_landmarks=False)
             key = cv2.waitKey(1) & 0xFF
             if key == ord("q"):
@@ -228,20 +239,36 @@ class HeadMaster:
 
     def load_pose(self, pose):
         self.pose_name = pose
-        self.voice.load_pose(self.poses[pose])
-        self.wait()
 
+        # 1. Queue Intro Generation (returns immediately)
+        intro_done_event = self.voice.load_pose(self.poses[pose])
+
+        # 2. Queue 'Show Pose' explanation IMMEDIATELY so it generates while Intro plays
+        # This pipelines the generation process.
+        explanation_done_event = self.voice.show_pose(self.poses[pose])
+
+        # 3. Wait for Intro to finish playing
+        self.wait_for_event(intro_done_event)
+
+        # 4. Disable random movements for the demonstration phase
         self.voice.move_marty_enabled = False
 
-        self.voice.show_pose(self.poses[pose])
+        # 5. Move the robot (Explanation audio plays during this)
+        # We start the robot move AFTER intro is done, which likely coincides with explanation audio starting
         if self.marty:
             self.marty.load_and_do_pose(POSES_FOLDER + pose + "/pose.toml")
-        self.wait()
 
+        # 6. Now wait for the explanation audio to finish playing
+        self.wait_for_event(explanation_done_event)
+
+        # 7. Start Counter (Pipelines automatically after explanation)
         self.reset_marty_pos()
-        self.voice.start_counter()
-        self.wait()
+        counter_done_event = self.voice.start_counter()
 
+        # 8. Wait for counter to finish
+        self.wait_for_event(counter_done_event)
+
+        # 9. Re-enable random movements for the exercise
         self.voice.move_marty_enabled = True
 
     def do_pose(self):
@@ -280,10 +307,7 @@ class HeadMaster:
                 break
             if key == ord("c"):
                 self.name_files = str(time.time())
-            # if key == ord("f"):
-            #     self.voice.corrective_feedback()
-            # if key == ord("h"):
-            #     self.voice.end_pose_feedback()
+
         self.pose_ended = True
         return self.voice.generated_text
 
