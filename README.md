@@ -98,4 +98,6 @@ Joint: R-Hip, Angle: 139
 ## Setup
 https://github.com/thewh1teagle/kokoro-onnx/releases
 
+## Bonus
 
+Make marty more alive by mooving arms or legs when it is making a correctiv feedback
