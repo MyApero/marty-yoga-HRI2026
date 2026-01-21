@@ -24,7 +24,7 @@ class Speak:
         analyze_ongoing_frame,
         generated_text_callback=lambda text: None,
         can_i_speak=lambda: True,
-        audio_chunk_margin_seconds=3.0,
+        audio_chunk_margin_seconds=4.0,
     ):
         self.move_marty_callback = move_marty_callback
         self.move_marty_enabled = move_marty_enabled
@@ -67,15 +67,19 @@ class Speak:
     def _tts_worker(self):
         """
         Consumes text_queue, generates audio, pushes to audio_queue.
-        Item format: (text_segment, completion_event)
+        Item format: (text_segment, completion_event, generate_audio)
         """
         while True:
             item = self.text_queue.get()
-            text, event = item
+            text, event, generate_audio = item
 
             # If text is None, this signals the end of a specific request
             if text is None:
                 self.audio_queue.put((None, event))
+                self.text_queue.task_done()
+                continue
+
+            if not generate_audio:
                 self.text_queue.task_done()
                 continue
 
@@ -108,7 +112,7 @@ class Speak:
                 # Play everything remaining in the buffer immediately.
                 for chunk in buffer:
                     self._play_chunk_wrapper(chunk)
-                
+
                 # Reset buffer
                 buffer = []
                 buffer_duration = 0.0
@@ -118,12 +122,12 @@ class Speak:
                     event.set()
                     with self.lock:
                         self.active_tasks = max(0, self.active_tasks - 1)
-                
+
                 self.audio_queue.task_done()
                 continue
 
             # --- Case 2: Audio Chunk ---
-            
+
             # Check for interruptions (Correction)
             if self.correction is not None:
                 current_keys = self.analyze_ongoing_frame().keys()
@@ -133,7 +137,7 @@ class Speak:
                     # Clear local buffer
                     buffer = []
                     buffer_duration = 0.0
-                    
+
                     self.audio_queue.task_done()
                     self.move_marty_type_correctiv = None
                     continue
@@ -188,7 +192,9 @@ class Speak:
         if self.move_marty_enabled:
             if self.move_marty_callback and self.move_marty_type_correctiv is None:
                 self.move_marty_callback(duration)
-            elif self.move_marty_correctiv and self.move_marty_type_correctiv is not None:
+            elif (
+                self.move_marty_correctiv and self.move_marty_type_correctiv is not None
+            ):
                 self.move_marty_correctiv(duration, self.move_marty_type_correctiv)
                 self.move_marty_type_correctiv = None
         stream.write(chunk)
@@ -196,26 +202,26 @@ class Speak:
     def _coordinator_worker(self):
         """
         Consumes request_queue, runs Ollama.
-        Item format: (messages, model, completion_event)
+        Item format: (messages, model, completion_event, generate_audio)
         """
         while True:
             request = self.request_queue.get()
-            messages, model, event = request
+            messages, model, event, generate_audio = request
 
             # 1. Generate text
-            self._run_ollama_generation(messages, model)
+            self._run_ollama_generation(messages, model, generate_audio)
 
             # 2. Push End-of-Request marker to TTS
             # The event travels: Coordinator -> TTS -> Player -> Event.set()
-            self.text_queue.put((None, event))
+            self.text_queue.put((None, event, generate_audio))
 
             # 3. DO NOT WAIT. Immediately process next request.
             self.request_queue.task_done()
 
-    def _run_ollama_generation(self, messages, model):
+    def _run_ollama_generation(self, messages, model, generate_audio):
         try:
             stream = ollama.chat(model=model, messages=messages, stream=True)
-            buffer = "Hi there!"
+            buffer = ""
             sentence_endings = re.compile(r"(?<=[.!?])\s+")
 
             for chunk in stream:
@@ -228,19 +234,21 @@ class Speak:
                     for sentence in parts[:-1]:
                         if sentence.strip():
                             # Push text with NO event
-                            self.text_queue.put((sentence.strip(), None))
+                            self.text_queue.put(
+                                (sentence.strip(), None, generate_audio)
+                            )
                     buffer = parts[-1]
 
             self.generated_text_callback(self.generated_text)
             if buffer.strip():
-                self.text_queue.put((buffer.strip(), None))
+                self.text_queue.put((buffer.strip(), None, generate_audio))
 
         except Exception as e:
             print(f"Ollama Error: {e}", file=sys.stderr)
 
     # --- Public Methods ---
 
-    def say(self, messages, model="llama3.1"):
+    def say(self, messages, model="llama3.1", generate_audio=True):
         """
         Queues a message.
         Returns: threading.Event() that will be set when this specific message finishes playing.
@@ -250,8 +258,26 @@ class Speak:
             self.generated_text = ""
             self.active_tasks += 1
 
-        self.request_queue.put((messages, model, completion_event))
+        self.request_queue.put((messages, model, completion_event, generate_audio))
         return completion_event
+
+    def evaluate_prompt(self, messages, count=20, generate_audio=False):
+        """
+        Runs the provided prompt multiple times to evaluate text generation quality.
+        """
+        print(f"--- Starting Evaluation ({count} runs) ---", file=sys.stderr)
+        events = []
+        for i in range(count):
+            print(f"Queuing Run {i + 1}/{count}...", file=sys.stderr)
+            evt = self.say(messages, generate_audio=generate_audio)
+            events.append(evt)
+
+        # Wait for all to finish
+        for i, evt in enumerate(events):
+            evt.wait()
+            print(f"Run {i + 1} completed.", file=sys.stderr)
+
+        print("--- Evaluation Complete ---", file=sys.stderr)
 
     def intro(self):
         system_instruction = (
@@ -261,7 +287,10 @@ class Speak:
         )
         messages = [
             {"role": "system", "content": system_instruction},
-            {"role": "user", "content": "Greet the student and introduce yourself as their yoga coach."},
+            {
+                "role": "user",
+                "content": "Greet the student and introduce yourself as their yoga coach.",
+            },
         ]
         return self.say(messages, model="llama3.2")
 
@@ -311,7 +340,10 @@ class Speak:
         )
         messages = [
             {"role": "system", "content": system_instruction},
-            {"role": "user", "content": f"Pose details: {str(pose['description']['howto'])}"},
+            {
+                "role": "user",
+                "content": f"Pose details: {str(pose['description']['howto'])}",
+            },
         ]
         return self.say(messages)
 
