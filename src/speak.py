@@ -95,39 +95,74 @@ class Speak:
         Consumes audio_queue, plays sound.
         Item format: (audio_chunk, completion_event)
         """
+        buffer = []
+        buffer_duration = 0.0
+
         while True:
             item = self.audio_queue.get()
             audio_chunk, event = item
 
-            # If we receive a marker with an event, it means the utterance finished
+            # --- Case 1: End of Request Marker ---
             if audio_chunk is None:
+                # We have reached the end of the stream for this request.
+                # Play everything remaining in the buffer immediately.
+                for chunk in buffer:
+                    self._play_chunk_wrapper(chunk)
+                
+                # Reset buffer
+                buffer = []
+                buffer_duration = 0.0
+
+                # Signal completion
                 if event:
-                    event.set()  # Signal to the main thread that this specific sentence is done
+                    event.set()
                     with self.lock:
                         self.active_tasks = max(0, self.active_tasks - 1)
+                
                 self.audio_queue.task_done()
                 continue
 
-            # Start stream if not running (logic simplified here, stream can stay open or toggle)
-            if not self.stream.active:
-                self.stream.start()
-
-            # Handle Interruption logic
+            # --- Case 2: Audio Chunk ---
+            
+            # Check for interruptions (Correction)
             if self.correction is not None:
                 current_keys = self.analyze_ongoing_frame().keys()
                 # If correction is still valid, stop current playback
                 if not (self.correction.keys() <= current_keys):
                     self._drain_queue_safely()
+                    # Clear local buffer
+                    buffer = []
+                    buffer_duration = 0.0
+                    
                     self.audio_queue.task_done()
                     self.move_marty_type_correctiv = None
                     continue
 
-            # Wait if paused
-            while not self.can_i_speak():
-                time.sleep(0.1)
+            # Add to buffer
+            buffer.append(audio_chunk)
+            duration = len(audio_chunk) / SAMPLE_RATE
+            buffer_duration += duration
 
-            self._play_chunk(self.stream, audio_chunk)
+            # Play if buffer is full enough
+            # We play chunks until the buffer drops below the margin
+            while buffer_duration >= self.audio_chunk_margin_seconds:
+                chunk = buffer.pop(0)
+                dur = len(chunk) / SAMPLE_RATE
+                buffer_duration -= dur
+                self._play_chunk_wrapper(chunk)
+
             self.audio_queue.task_done()
+
+    def _play_chunk_wrapper(self, chunk):
+        """Helper to encapsulate stream management and pause logic."""
+        if not self.stream.active:
+            self.stream.start()
+
+        # Wait if paused
+        while not self.can_i_speak():
+            time.sleep(0.1)
+
+        self._play_chunk(self.stream, chunk)
 
     def _drain_queue_safely(self):
         """
@@ -180,7 +215,7 @@ class Speak:
     def _run_ollama_generation(self, messages, model):
         try:
             stream = ollama.chat(model=model, messages=messages, stream=True)
-            buffer = ""
+            buffer = "Hi there!"
             sentence_endings = re.compile(r"(?<=[.!?])\s+")
 
             for chunk in stream:
@@ -221,7 +256,7 @@ class Speak:
     def intro(self):
         system_instruction = (
             "You are a friendly yoga coach named Marty. Introduce yourself and greet the student warmly. "
-            "Keep it to max length of 25 words. No -, use more dots than commas. "
+            "Keep it to max length of 25 words. No -, use more dots than commas. No questions."
             "Make it sound like a natural conversation."
         )
         messages = [
