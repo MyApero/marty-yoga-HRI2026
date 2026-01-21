@@ -2,9 +2,9 @@
 
 - [x] Embodiment
 - [ ] 
-- [ ] Pose demonstration
-- [ ] Moving the body part to communicate corrections (non verbal)
-  - [ ] Arms (jokes on elbow)
+- [x] Pose demonstration
+- [x] Moving the body part to communicate corrections (non verbal)
+  - [x] Arms (jokes on elbow)
   - [ ] Legs (careful to keep balance)
   - [ ] Back (bend forward/backward)
   - [ ] Ankles (twist left/right)
@@ -32,7 +32,7 @@ graph TD
 ## Using Mediapipe
 - [x] Getting landmarks from video feed.
 - [ ] 
-- [ ] Bigger screen
+- [x] Bigger screen
 
 ## Poses analysis algorithm
 Video feedback

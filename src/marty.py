@@ -30,6 +30,22 @@ MAPPING = {
     "Eyes": "eyes",
 }
 
+MAPPING_MEDIAPIPE_MARTY = {
+    "Right Wrist" : "Right Arm",
+    "Left Wrist" : "Left Arm",
+    "Right Elbow" : "Right Arm",
+    "Left Elbow" : "Left Arm",
+    "Right Shoulder" : "Arms",
+    "Left Shoulder" : "Arms",
+    "Right Knee" : "Right Knee",
+    "Left Knee" : "Left Knee",
+    "Right Hip" : "Hips",
+    "Left Hip" : "Hips",
+    "Spine" : "Spine",
+    "Spine Alignment" : "Spine",
+    "Right Ankle" : "Right Twist",
+    "Left Ankle" : "Left Twist",
+}
 
 class MyMarty(Marty):
     def __init__(self, *args, **kwargs):
@@ -90,7 +106,7 @@ class MyMarty(Marty):
         self.queue.put(({"eyes": random.randint(20, 30)}, 100, True))
         self.queue.put(({"eyes": 0}, 150, False))
 
-    def move_marty_arm_randomly(self, chunk_duration):
+    def move_marty_randomly(self, chunk_duration):
         time_elapsed = 0
         while time_elapsed < chunk_duration:
             wait_time = random.uniform(2, 4)
@@ -106,3 +122,60 @@ class MyMarty(Marty):
                 self.interaction_eyebrows()
             time_elapsed += wait_time
             self.queue.put(({"eyes": 0}, wait_time, True))
+
+
+    def move_marty_limb(self, chunk_duration, limb):
+        time_elapsed = 0
+
+        arm_tracker = ["Wrist", "Elbow", "Shoulder"]
+        leg_tracker = ["Hip", "Knee", "Ankle"]
+        spine_tracker = ["Spine"]
+        
+        limb_keys = list(limb.keys())
+
+        while time_elapsed < chunk_duration:
+            # 1. ANALYZE DATA: Determine what is "broken" or active
+            has_arm = any(t in k for k in limb_keys for t in arm_tracker)
+            has_leg = any(t in k for k in limb_keys for t in leg_tracker)
+            has_spine = any(t in k for k in limb_keys for t in spine_tracker)
+            
+            has_right = any("Right" in k for k in limb_keys)
+            has_left = any("Left" in k for k in limb_keys)
+
+            # 2. EXECUTE ACTIONS
+            
+            # --- ARMS (Simultaneous Intent) ---
+            if has_arm:
+                # We call interaction for both; if your system supports non-blocking 
+                # calls, they will move together. If blocking, we keep them short.
+                if has_right:
+                    self.interaction("right arm", 100, 100, False)
+                if has_left:
+                    self.interaction("left arm", 100, 100, False)
+                
+                # Return to neutral
+                if has_right: self.interaction("right arm", 0, 0, False)
+                if has_left: self.interaction("left arm", 0, 0, False)
+
+            # --- SPINE vs LEGS (Wiggle vs Kick Priority) ---
+            if has_spine:
+                # Wiggle logic: Move hips in opposition to simulate a shake
+                duration = 400 # ms
+                self.interaction("right hip", 100, 100, True, duration)
+                self.interaction("left hip", -100, 100, True, duration)
+                # Reset
+                self.interaction("right hip", 0, 0, True)
+                self.interaction("left hip", 0, 0, True)
+                
+            elif has_leg:
+                # Only kick if there is NO spine wiggle (per your request)
+                if has_right and not has_left:
+                    self.interaction("right leg", 100, 100, False) # Kick Right
+                elif has_left and not has_right:
+                    self.interaction("left leg", 100, 100, False)  # Kick Left
+
+            # 3. TIME MANAGEMENT
+            wait_time = random.uniform(6, 8)
+            time_elapsed += wait_time
+
+
