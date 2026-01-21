@@ -22,7 +22,6 @@ class Speak:
         move_marty_enabled,
         move_marty_correctiv,
         analyze_ongoing_frame,
-        generated_text_callback=lambda text: None,
         can_i_speak=lambda: True,
         audio_chunk_margin_seconds=4.0,
     ):
@@ -31,7 +30,6 @@ class Speak:
         self.move_marty_type_correctiv = None
         self.move_marty_correctiv = move_marty_correctiv
         self.analyze_ongoing_frame = analyze_ongoing_frame
-        self.generated_text_callback = generated_text_callback
         self.can_i_speak = can_i_speak
 
         # Queues now store tuples: (payload, completion_event)
@@ -239,7 +237,7 @@ class Speak:
                             )
                     buffer = parts[-1]
 
-            self.generated_text_callback(self.generated_text)
+            self.generated_text_callback()
             if buffer.strip():
                 self.text_queue.put((buffer.strip(), None, generate_audio))
 
@@ -247,6 +245,10 @@ class Speak:
             print(f"Ollama Error: {e}", file=sys.stderr)
 
     # --- Public Methods ---
+
+    def generated_text_callback(self):
+        print("Generated Text:", self.generated_text)
+        return self.generated_text
 
     def say(self, messages, model="llama3.1", generate_audio=True):
         """

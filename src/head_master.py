@@ -26,6 +26,8 @@ class HeadMaster:
         self.camera = self.init_camera(camera_index)
         self.marty = self.init_marty()
         self.voice = self.init_voice()
+        if self.marty:
+            self.marty.init_generated_text(self.voice.generated_text_callback)
         self.pose_name = None
         self.pose_duration = pose_duration  # seconds
         self.poses = {
@@ -61,22 +63,19 @@ class HeadMaster:
 
             def move_marty_callback(chunk_duration):
                 self.marty.move_marty_randomly(chunk_duration)
-            def move_marty_callback_correctiv(chunk_duration, limb):
-                self.marty.move_marty_limb(chunk_duration, limb)
+
+            def move_marty_callback_correctiv(chunk_duration):
+                self.marty.move_marty_limb(chunk_duration)
 
         else:
             move_marty_callback = None
             move_marty_callback_correctiv = None
-
-        def generated_text_callback(text):
-            print("Generated Text:", text)
 
         return Speak(
             move_marty_callback,
             True,
             move_marty_callback_correctiv,
             self.analyze_ongoing_frame,
-            generated_text_callback,
             can_i_speak=lambda: self.pose_ended or not self.is_pose_ending,
         )
 
