@@ -134,7 +134,6 @@ class MyMarty(Marty):
         limb_keys = list(limb.keys())
 
         while time_elapsed < chunk_duration:
-            # 1. ANALYZE DATA: Determine what is "broken" or active
             has_arm = any(t in k for k in limb_keys for t in arm_tracker)
             has_leg = any(t in k for k in limb_keys for t in leg_tracker)
             has_spine = any(t in k for k in limb_keys for t in spine_tracker)
@@ -142,39 +141,29 @@ class MyMarty(Marty):
             has_right = any("Right" in k for k in limb_keys)
             has_left = any("Left" in k for k in limb_keys)
 
-            # 2. EXECUTE ACTIONS
-            
-            # --- ARMS (Simultaneous Intent) ---
             if has_arm:
-                # We call interaction for both; if your system supports non-blocking 
-                # calls, they will move together. If blocking, we keep them short.
                 if has_right:
                     self.interaction("right arm", 100, 100, False)
                 if has_left:
                     self.interaction("left arm", 100, 100, False)
-                
-                # Return to neutral
-                if has_right: self.interaction("right arm", 0, 0, False)
-                if has_left: self.interaction("left arm", 0, 0, False)
+                if has_right:
+                    self.interaction("right arm", 0, 0, False)
+                if has_left:
+                    self.interaction("left arm", 0, 0, False)
 
-            # --- SPINE vs LEGS (Wiggle vs Kick Priority) ---
             if has_spine:
-                # Wiggle logic: Move hips in opposition to simulate a shake
-                duration = 400 # ms
-                self.interaction("right hip", 100, 100, True, duration)
+                duration = self.interaction("right hip", 100, 100, True)
                 self.interaction("left hip", -100, 100, True, duration)
                 # Reset
-                self.interaction("right hip", 0, 0, True)
-                self.interaction("left hip", 0, 0, True)
+                self.interaction("right hip", 0, 0, True, duration)
+                self.interaction("left hip", 0, 0, True, duration)
                 
             elif has_leg:
-                # Only kick if there is NO spine wiggle (per your request)
                 if has_right and not has_left:
-                    self.interaction("right leg", 100, 100, False) # Kick Right
+                    self.kick("right")
                 elif has_left and not has_right:
-                    self.interaction("left leg", 100, 100, False)  # Kick Left
+                    self.kick("left")
 
-            # 3. TIME MANAGEMENT
             wait_time = random.uniform(6, 8)
             time_elapsed += wait_time
 
