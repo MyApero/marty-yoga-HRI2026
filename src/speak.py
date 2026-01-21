@@ -24,6 +24,7 @@ class Speak:
         analyze_ongoing_frame,
         generated_text_callback=lambda text: None,
         can_i_speak=lambda: True,
+        audio_chunk_margin_seconds=3.0,
     ):
         self.move_marty_callback = move_marty_callback
         self.move_marty_enabled = move_marty_enabled
@@ -43,6 +44,8 @@ class Speak:
         self.generated_text = ""
         self.active_tasks = 0
         self.lock = threading.Lock()
+
+        self.audio_chunk_margin_seconds = audio_chunk_margin_seconds
 
         # Load Models
         try:
@@ -214,6 +217,18 @@ class Speak:
 
         self.request_queue.put((messages, model, completion_event))
         return completion_event
+
+    def intro(self):
+        system_instruction = (
+            "You are a friendly yoga coach named Marty. Introduce yourself and greet the student warmly. "
+            "Keep it to max length of 25 words. No -, use more dots than commas. "
+            "Make it sound like a natural conversation."
+        )
+        messages = [
+            {"role": "system", "content": system_instruction},
+            {"role": "user", "content": "Greet the student and introduce yourself as their yoga coach."},
+        ]
+        return self.say(messages, model="llama3.2")
 
     def start_counter(self):
         """
