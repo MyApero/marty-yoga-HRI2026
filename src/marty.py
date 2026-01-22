@@ -30,6 +30,7 @@ MAPPING = {
     "Eyes": "eyes",
 }
 
+
 class MyMarty(Marty):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -110,58 +111,52 @@ class MyMarty(Marty):
             time_elapsed += wait_time
             self.queue.put(({"eyes": 0}, wait_time, True))
 
-    def move_marty_limb(self, chunk_duration):
-        time_elapsed = 0
-
+    def move_marty_limb(self):
         arm_parts = ["Wrist", "Elbow", "Shoulder"]
         leg_parts = ["Hip", "Knee", "Ankle"]
 
         text = self.generated_text()
-        while time_elapsed < chunk_duration:
-            limb_lower = text.lower()
+        limb_lower = text.lower()
 
-            has_arm = any(part.lower() in limb_lower for part in arm_parts)
-            has_leg = any(part.lower() in limb_lower for part in leg_parts)
-            has_spine = "spine" in limb_lower
+        has_arm = any(part.lower() in limb_lower for part in arm_parts)
+        has_leg = any(part.lower() in limb_lower for part in leg_parts)
+        has_spine = "spine" in limb_lower
 
-            is_right = "right" in limb_lower
-            is_left = "left" in limb_lower
+        is_right = "right" in limb_lower
+        is_left = "left" in limb_lower
 
-            if has_arm:
-                # Move both if it's a general arm error, or just the specific side
-                duration = 0
-                if is_right:
-                    duration = self.interaction("right arm", 100, 100, False)
-                if is_left:
-                    duration = self.interaction("left arm", 100, 100, False)
-                if is_right:
-                    self.interaction("right arm", 0, 0, False, duration)
-                if is_left:
-                    self.interaction("left arm", 0, 0, False, duration)
+        if has_arm:
+            # Move both if it's a general arm error, or just the specific side
+            duration = 0
+            if is_right:
+                duration = self.interaction("right arm", 100, 100, False)
+            if is_left:
+                duration = self.interaction("left arm", 100, 100, False)
+            if is_right:
+                self.interaction("right arm", 0, 0, False, duration)
+            if is_left:
+                self.interaction("left arm", 0, 0, False, duration)
 
-                if is_right:
-                    duration = self.interaction("right arm", 100, 100, False)
-                if is_left:
-                    duration = self.interaction("left arm", 100, 100, False)
-                if is_right:
-                    self.interaction("right arm", 0, 0, False, duration)
-                if is_left:
-                    self.interaction("left arm", 0, 0, False, duration)
+            if is_right:
+                duration = self.interaction("right arm", 100, 100, False)
+            if is_left:
+                duration = self.interaction("left arm", 100, 100, False)
+            if is_right:
+                self.interaction("right arm", 0, 0, False, duration)
+            if is_left:
+                self.interaction("left arm", 0, 0, False, duration)
 
-            # --- BODY (Wiggle vs Kick) ---
-            if has_spine:
-                # PRIORITY 1: Wiggle if spine is broken
-                print("Spine issue detected: Wiggling...")
-                duration = self.interaction("right hip", 100, 100, False)
-                self.interaction("left hip", -100, 100, False, duration)
-                self.interaction("right hip", 0, 0, False, duration)
-                self.interaction("left hip", 0, 0, False, duration)
+        # --- BODY (Wiggle vs Kick) ---
+        # if has_spine:
+        #     # PRIORITY 1: Wiggle if spine is broken
+        #     print("Spine issue detected: Wiggling...")
+        #     duration = self.interaction("right hip", 100, 100, False)
+        #     self.interaction("left hip", -100, 100, False, duration)
+        #     self.interaction("right hip", 0, 0, False, duration)
+        #     self.interaction("left hip", 0, 0, False, duration)
 
-            elif has_leg:
-                if is_right and not is_left:
-                    self.kick("right", blocking=True)
-                elif is_left and not is_right:
-                    self.kick("left")
-
-            wait_time = random.uniform(6, 8)
-            time_elapsed += wait_time
+        elif has_leg:
+            if is_right and not is_left:
+                self.kick("right", blocking=True)
+            elif is_left and not is_right:
+                self.kick("left")

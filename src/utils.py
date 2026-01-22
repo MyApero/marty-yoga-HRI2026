@@ -164,24 +164,3 @@ def get_lerp_color(current, target, margin):
     r = int(255 * factor)
     g = int(255 * (1 - factor))
     return (0, g, r)
-
-
-def calculate_joint_feedback(pose, joint, targets, margin, w, h):
-    p1 = pose[0]
-    p2 = pose[1]
-    p3 = pose[2]
-
-    angle = get_angle(p1, p2, p3)
-    target = targets.get(joint["name"], angle)  # Fallback to current if not in TOML
-
-    # LINEAR COLOR CALCULATION (LERP)
-    error = abs(angle - target)
-    factor = min(error / margin, 1.0)
-
-    # BGR: Green (0, 255, 0) to Red (0, 0, 255)
-    # factor 0 = Green, factor 1 = Red
-    b = 0
-    g = int(255 * (1 - factor))
-    r = int(255 * factor)
-
-    return {"angle": angle, "color": (b, g, r), "pos": (int(p2.x * w), int(p2.y * h))}

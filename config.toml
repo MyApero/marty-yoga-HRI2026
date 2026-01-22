@@ -5,7 +5,7 @@ marty = "bluetooth://Marty-Yoga"
 camera = 0
 
 [config_macos]
-marty = "usb:///dev/tty.usbserial-10"
+marty = "usb:///dev/tty.usbserial-1120"
 camera = 2
 
 [config_linux]
@@ -64,4 +64,4 @@ angles = [
 
 show_labels = true
 text_scale = 0.5
-max_error_margin = 22.0 # 0 deg = Green, 10+ deg = Red
+max_error_margin = 30.0 # 0 deg = Green, 10+ deg = Red

@@ -1,6 +1,7 @@
 [description]
 context = "The Chair Pose is a strengthening and heat-building asana that brings all parts of your body together into a cohesive and powerful whole. A deep squat, this pose immediately engages the strength of your legs, back, and ankles. It helps to build endurance and grounding."
-howto = """1. Stand in Chair Pose with big toes touching and heels slightly apart.
+howto = """Chair Pose:
+1. Stand in Chair Pose with big toes touching and heels slightly apart.
 2. Raise your arms overhead so that your biceps are just slightly in front of your ears. Keep your arms parallel, palms facing inward.
 3. Bend your knees, sitting your hips back and down as if sitting into an imaginary chair.
 4. Shift your weight into your heels so you can lift your toes slightly.
@@ -15,20 +16,20 @@ howto = """1. Stand in Chair Pose with big toes touching and heels slightly apar
 # """
 
 [pose]
-"Right Wrist" = 172.6
-"Left Wrist" = 167.2
-"Right Elbow" = 175.38
-"Left Elbow" = 179.09
-"Right Shoulder" = 22.35
-"Left Shoulder" = 153.47
-"Right Knee" = 91.73
-"Left Knee" = 87.28
-"Right Hip" = 56.85
-"Left Hip" = 91.96
-Spine = 56.85
-"Spine Alignment" = 152.34
-"Right Ankle" = 82.76
-"Left Ankle" = 106.07
+"Right Wrist" = 179.01
+"Left Wrist" = 163.9
+"Right Elbow" = 154.11
+"Left Elbow" = 178.18
+"Right Shoulder" = 100.11
+"Left Shoulder" = 121.69
+"Right Knee" = 136.66
+"Left Knee" = 110.25
+"Right Hip" = 67.43
+"Left Hip" = 126.09
+Spine = 67.43
+"Spine Alignment" = 147.91
+"Right Ankle" = 144.37
+"Left Ankle" = 105.41
 
 [marty]
 LeftHip = 50

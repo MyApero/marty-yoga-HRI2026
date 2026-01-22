@@ -18,12 +18,20 @@ POSES_FOLDER = "poses/"
 POSES_LIST = ["right_warrior2", "left_warrior2", "chair", "mountain"]
 
 MARGIN_BEFORE_CORRECTION_FEEDBACK_S = 5
+TIME_GENERATION_END_FEEDBACK_S = 12.0
+POSE_DURATION_S = 50
+SEND_CORRECTION_THRESHOLD = (
+    0.6  # the lower, the higher the chance of sending correction
+)
 
 
 class HeadMaster:
-    def __init__(self, camera_index, pose_duration=60, logging_level=logging.INFO):
+    def __init__(
+        self, current_config, pose_duration=POSE_DURATION_S, logging_level=logging.INFO
+    ):
         self.config = load_toml(CONFIG_FILE)
-        self.camera = self.init_camera(camera_index)
+        self.current_config = current_config
+        self.camera = self.init_camera(self.current_config["camera"])
         self.marty = self.init_marty()
         self.voice = self.init_voice()
         if self.marty:
@@ -52,7 +60,7 @@ class HeadMaster:
 
     def init_marty(self):
         try:
-            marty = MyMarty(self.config["marty"])
+            marty = MyMarty(self.current_config["marty"])
             return marty
         except Exception as e:
             print(f"Failed to initialize Marty: {e}", file=sys.stderr)
@@ -64,8 +72,8 @@ class HeadMaster:
             def move_marty_callback(chunk_duration):
                 self.marty.move_marty_randomly(chunk_duration)
 
-            def move_marty_callback_correctiv(chunk_duration):
-                self.marty.move_marty_limb(chunk_duration)
+            def move_marty_callback_correctiv():
+                self.marty.move_marty_limb()
 
         else:
             move_marty_callback = None
@@ -87,7 +95,11 @@ class HeadMaster:
             return
         frame = self.actual_run[-1]
         for angle_name, angle_data in frame.items():
-            if abs(angle_data["error"]) < self.config["feedback"]["max_error_margin"]:
+            if (
+                abs(angle_data["error"])
+                < self.config["feedback"]["max_error_margin"]
+                * SEND_CORRECTION_THRESHOLD
+            ):
                 if (
                     angle_name in self.ongoing_mistakes
                     and len(self.ongoing_mistakes[angle_name]["mistakes"][-1]) < 2
@@ -180,8 +192,8 @@ class HeadMaster:
                 (0, 0, 0),
                 -1,
             )
-            # Show only last 19 words
-            showed_text = " ".join(self.voice.generated_text.split()[-19:])
+            # Show only last 18 words
+            showed_text = " ".join(self.voice.generated_text.split()[-18:])
             cv2.putText(
                 frame,
                 showed_text,
@@ -245,35 +257,18 @@ class HeadMaster:
     def load_pose(self, pose):
         self.pose_name = pose
 
-        # 1. Queue Intro Generation (returns immediately)
         intro_done_event = self.voice.load_pose(self.poses[pose])
 
-        # 2. Queue 'Show Pose' explanation IMMEDIATELY so it generates while Intro plays
-        # This pipelines the generation process.
         explanation_done_event = self.voice.show_pose(self.poses[pose])
-
-        # 3. Wait for Intro to finish playing
         self.wait_for_event(intro_done_event)
-
-        # 4. Disable random movements for the demonstration phase
         self.voice.move_marty_enabled = False
-
-        # 5. Move the robot (Explanation audio plays during this)
-        # We start the robot move AFTER intro is done, which likely coincides with explanation audio starting
         if self.marty:
             self.marty.load_and_do_pose(POSES_FOLDER + pose + "/pose.toml")
 
-        # 6. Now wait for the explanation audio to finish playing
         self.wait_for_event(explanation_done_event)
-
-        # 7. Start Counter (Pipelines automatically after explanation)
         self.reset_marty_pos()
         counter_done_event = self.voice.start_counter()
-
-        # 8. Wait for counter to finish
         self.wait_for_event(counter_done_event)
-
-        # 9. Re-enable random movements for the exercise
         self.voice.move_marty_enabled = True
 
     def do_pose(self):
@@ -288,7 +283,10 @@ class HeadMaster:
             elapsed_time = time.time() - start_time
             timer_text = f"Time in pose: {int(elapsed_time)}s / {self.pose_duration}s"
 
-            if not self.is_pose_ending and elapsed_time > self.pose_duration - 10:
+            if (
+                not self.is_pose_ending
+                and elapsed_time > self.pose_duration - TIME_GENERATION_END_FEEDBACK_S
+            ):
                 self.is_pose_ending = True
                 feedbacks = get_feedbacks_from_run(
                     self.actual_run,

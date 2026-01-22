@@ -13,6 +13,7 @@ import numpy as np
 VOICE_NAME = "am_michael"
 VOICE_SPEED = 1.0
 SAMPLE_RATE = 24000
+AUDIO_CHUNK_MARGIN_S = 6.0
 
 
 class Speak:
@@ -23,7 +24,7 @@ class Speak:
         move_marty_correctiv,
         analyze_ongoing_frame,
         can_i_speak=lambda: True,
-        audio_chunk_margin_seconds=4.0,
+        audio_chunk_margin_seconds=AUDIO_CHUNK_MARGIN_S,
     ):
         self.move_marty_callback = move_marty_callback
         self.move_marty_enabled = move_marty_enabled
@@ -193,7 +194,7 @@ class Speak:
             elif (
                 self.move_marty_correctiv and self.move_marty_type_correctiv is not None
             ):
-                self.move_marty_correctiv(duration, self.move_marty_type_correctiv)
+                self.move_marty_correctiv()
                 self.move_marty_type_correctiv = None
         stream.write(chunk)
 

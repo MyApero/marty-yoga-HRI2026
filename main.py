@@ -16,8 +16,9 @@ elif current_os == "linux":
 else:
     current_config = config["config_common"]
 
+
 def main():
-    master = HeadMaster(camera_index=current_config["camera"])
+    master = HeadMaster(current_config=current_config)
 
     # Detect key press to start presentation
     while True:
