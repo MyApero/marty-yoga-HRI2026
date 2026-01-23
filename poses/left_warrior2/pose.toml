@@ -1,0 +1,36 @@
+[description]
+context = "Warrior 2 on the left side mirrors the benefits of the right, balancing the body's strength and flexibility. It focuses on strengthening the left leg and opening the left side of the pelvic girdle, ensuring symmetrical muscle development."
+howto = """Warrior 2 Pose:
+1. From a wide-legged stance, turn your left foot out 90 degrees to point to the top of the mat. Turn your right foot slightly inward.
+2. Align your left heel with the arch of your right foot.
+3. Exhale and bend your left knee deeply until it is stacked directly over your left ankle, forming a right angle.
+4. Press firmly through the outer edge of your right (back) foot to keep the back leg engaged and straight.
+5. Extend your arms out to the sides at shoulder height, reaching through the fingertips.
+6. Turn your head to look past your left fingers, keeping the torso long and centered between the legs."""
+
+[pose]
+"Right Wrist" = 178.09
+"Left Wrist" = 178.46
+"Right Elbow" = 175.84
+"Left Elbow" = 178.17
+"Right Shoulder" = 85.56
+"Left Shoulder" = 106.06
+"Right Knee" = 179.79
+"Left Knee" = 145.36
+"Right Hip" = 114.5
+"Left Hip" = 120.04
+Spine = 114.5
+"Spine Alignment" = 160.4
+"Right Ankle" = 174.18
+"Left Ankle" = 126.2
+
+[marty]
+LeftHip = -24
+LeftTwist = -42
+LeftKnee = -30
+RightHip = 54
+RightTwist = 0
+RightKnee = 0
+LeftArm = -65
+RightArm = 100
+Eyes = 0
