@@ -11,6 +11,7 @@ import logging
 import sys
 import toml
 from src.camera import capture_image_from_camera
+from enum import Enum
 
 # Initial Setup
 CONFIG_FILE = "config.toml"
@@ -24,6 +25,16 @@ SEND_CORRECTION_THRESHOLD = (
     0.6  # the lower, the higher the chance of sending correction
 )
 
+class InteractionState(Enum):
+    IDLE = 0
+    PRESENTING = 1
+    EXPLAINING_POSE = 2
+    COUNTDOWN = 3
+    IN_POSE_NO_CORRECTIVE_FEEDBACK = 4
+    IN_POSE_CORRECTIVE_FEEDBACK_GENERATION = 5
+    IN_POSE_CORRECTIVE_FEEDBACK = 6
+    IN_POSE_END_FEEDBACK_GENERATION = 7
+    END_FEEDBACK = 8
 
 class HeadMaster:
     def __init__(
@@ -184,7 +195,7 @@ class HeadMaster:
         self.name_files = None
 
     def draw_overlays(self, frame):
-        if self.voice.generated_text:
+        if self.voice.subtitles:
             cv2.rectangle(
                 frame,
                 (5, frame.shape[0] - 40),
@@ -193,7 +204,7 @@ class HeadMaster:
                 -1,
             )
             # Show only last 18 words
-            showed_text = " ".join(self.voice.generated_text.split()[-18:])
+            showed_text = " ".join(self.voice.subtitles.split()[-18:])
             cv2.putText(
                 frame,
                 showed_text,

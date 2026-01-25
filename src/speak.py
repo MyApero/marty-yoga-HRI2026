@@ -41,6 +41,7 @@ class Speak:
         # State Management
         self.correction = None
         self.generated_text = ""
+        self.subtitles = ""
         self.active_tasks = 0
         self.lock = threading.Lock()
 
@@ -74,7 +75,7 @@ class Speak:
 
             # If text is None, this signals the end of a specific request
             if text is None:
-                self.audio_queue.put((None, event))
+                self.audio_queue.put((None, None, event))
                 self.text_queue.task_done()
                 continue
 
@@ -84,10 +85,11 @@ class Speak:
 
             try:
                 generator = self.kokoro(text, voice=VOICE_NAME, speed=VOICE_SPEED)
-                for _, (_, _, audio) in enumerate(generator):
+                for i, (_, _, audio) in enumerate(generator):
                     if len(audio) > 0:
+                        chunk_subtitle = text if i == 0 else None
                         # Push audio chunks with no event (event is only at the end)
-                        self.audio_queue.put((audio, None))
+                        self.audio_queue.put((audio, chunk_subtitle, None))
             except Exception as e:
                 print(f"TTS Error: {e}", file=sys.stderr)
 
@@ -96,25 +98,28 @@ class Speak:
     def _player_worker(self):
         """
         Consumes audio_queue, plays sound.
-        Item format: (audio_chunk, completion_event)
+        Item format: (audio_chunk, subtitles, completion_event)
         """
         buffer = []
         buffer_duration = 0.0
 
         while True:
             item = self.audio_queue.get()
-            audio_chunk, event = item
+            audio_chunk, incoming_subtitles, event = item
 
             # --- Case 1: End of Request Marker ---
             if audio_chunk is None:
-                # We have reached the end of the stream for this request.
                 # Play everything remaining in the buffer immediately.
-                for chunk in buffer:
-                    self._play_chunk_wrapper(chunk)
+                while len(buffer) > 0:
+                    chunk_data, chunk_sub = buffer.pop(0)
+                    if chunk_sub:
+                        self.subtitles = chunk_sub
+                        print(f"[Speak1]: {self.subtitles}")
+                    self._play_chunk_wrapper(chunk_data)
 
-                # Reset buffer
-                buffer = []
+                # Reset buffer state
                 buffer_duration = 0.0
+                self.subtitles = ""
 
                 # Signal completion
                 if event:
@@ -133,26 +138,31 @@ class Speak:
                 # If correction is still valid, stop current playback
                 if not (self.correction.keys() <= current_keys):
                     self._drain_queue_safely()
-                    # Clear local buffer
                     buffer = []
                     buffer_duration = 0.0
+                    self.subtitles = ""
 
                     self.audio_queue.task_done()
                     self.move_marty_type_correctiv = None
                     continue
 
             # Add to buffer
-            buffer.append(audio_chunk)
+            buffer.append((audio_chunk, incoming_subtitles))
+
             duration = len(audio_chunk) / SAMPLE_RATE
             buffer_duration += duration
 
             # Play if buffer is full enough
-            # We play chunks until the buffer drops below the margin
             while buffer_duration >= self.audio_chunk_margin_seconds:
-                chunk = buffer.pop(0)
-                dur = len(chunk) / SAMPLE_RATE
+                chunk_data, chunk_sub = buffer.pop(0)
+                if chunk_sub:
+                    self.subtitles = chunk_sub
+                    print(f"[Speak2]: {self.subtitles}")
+
+                dur = len(chunk_data) / SAMPLE_RATE
                 buffer_duration -= dur
-                self._play_chunk_wrapper(chunk)
+
+                self._play_chunk_wrapper(chunk_data)
 
             self.audio_queue.task_done()
 
@@ -175,7 +185,7 @@ class Speak:
         while not self.audio_queue.empty():
             try:
                 item = self.audio_queue.get_nowait()
-                _, event = item
+                _, _, event = item
                 if event:
                     event.set()  # Don't deadlock the waiter!
                     with self.lock:
@@ -248,7 +258,6 @@ class Speak:
     # --- Public Methods ---
 
     def generated_text_callback(self):
-        print("Generated Text:", self.generated_text)
         return self.generated_text
 
     def say(self, messages, model="llama3.1", generate_audio=True):
@@ -304,6 +313,7 @@ class Speak:
         """
         completion_event = threading.Event()
         file_path = "assets/countdown.wav"
+        subtitles = "Get ready. 3... 2... 1... Hold!"
 
         try:
             data, fs = sf.read(file_path, dtype="float32")
@@ -321,9 +331,9 @@ class Speak:
                 self.active_tasks += 1
 
             # Inject directly to audio queue
-            # Format: (AudioData, None) -> (None, Event)
-            self.audio_queue.put((data, None))
-            self.audio_queue.put((None, completion_event))
+            # Format: (AudioData, Subtitles, Event)
+            self.audio_queue.put((data, subtitles, None))
+            self.audio_queue.put((None, None, completion_event))
 
         except FileNotFoundError:
             print(f"Error: {file_path} not found.", file=sys.stderr)

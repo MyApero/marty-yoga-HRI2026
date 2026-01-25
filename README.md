@@ -84,6 +84,8 @@ Use the environment variable `HF_HUB_OFFLINE=1` to run the code without internet
 
 # Optimizations
 
+- [ ] "3, 2, 1, hold" should show landmarks while saying it, not after.
+
 Using 25 sec to verify a pose and using the last 5 to start generating a thoughtful feedback (thinking mode).
 
 While he's speaking, we can capture the 5 last seconds to see if we need to say something about it or not.

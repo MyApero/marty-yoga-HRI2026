@@ -35,7 +35,7 @@ class MyMarty(Marty):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.generated_text = None
+        self.generated_text: callable = None
         self.queue = queue.Queue()
         threading.Thread(target=self.marty_worker, daemon=True).start()
         if not self.is_conn_ready():
@@ -43,7 +43,7 @@ class MyMarty(Marty):
 
         self.queue.put((DEFAULT_ANGLES, 1000, False))
 
-    def init_generated_text(self, generated_text):
+    def init_generated_text(self, generated_text: callable):
         self.generated_text = generated_text
 
     def get_pose(self):
