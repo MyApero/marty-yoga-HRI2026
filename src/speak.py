@@ -33,7 +33,7 @@ class Speak:
         self.analyze_ongoing_frame = analyze_ongoing_frame
         self.can_i_speak = can_i_speak
 
-        # Queues now store tuples: (payload, completion_event)
+        # Queues now store tuples with epoch: (epoch, payload, completion_event)
         self.request_queue = queue.Queue()
         self.text_queue = queue.Queue()
         self.audio_queue = queue.Queue()
@@ -44,6 +44,8 @@ class Speak:
         self.subtitles = ""
         self.active_tasks = 0
         self.lock = threading.Lock()
+
+        self.current_epoch = 0
 
         self.audio_chunk_margin_seconds = audio_chunk_margin_seconds
 
@@ -67,15 +69,23 @@ class Speak:
     def _tts_worker(self):
         """
         Consumes text_queue, generates audio, pushes to audio_queue.
-        Item format: (text_segment, completion_event, generate_audio)
+        Item format: (epoch, text_segment, completion_event, generate_audio)
         """
         while True:
             item = self.text_queue.get()
-            text, event, generate_audio = item
+            epoch, text, event, generate_audio = item
+
+            # 1. Stale Check (Fast Fail)
+            # If this task belongs to an old epoch, discard it immediately.
+            if epoch != self.current_epoch:
+                if event:
+                    event.set()  # Unblock waiter
+                self.text_queue.task_done()
+                continue
 
             # If text is None, this signals the end of a specific request
             if text is None:
-                self.audio_queue.put((None, None, event))
+                self.audio_queue.put((epoch, None, None, event))
                 self.text_queue.task_done()
                 continue
 
@@ -85,43 +95,80 @@ class Speak:
 
             try:
                 generator = self.kokoro(text, voice=VOICE_NAME, speed=VOICE_SPEED)
+
                 for i, (_, _, audio) in enumerate(generator):
+                    # 2. Interrupt Check
+                    # Check if epoch changed WHILE we were generating
+                    if self.current_epoch != epoch:
+                        print("TTS Aborted due to epoch change", file=sys.stderr)
+                        if event:
+                            event.set()
+                        break
+
                     if len(audio) > 0:
                         chunk_subtitle = text if i == 0 else None
-                        # Push audio chunks with no event (event is only at the end)
-                        self.audio_queue.put((audio, chunk_subtitle, None))
+                        self.audio_queue.put((epoch, audio, chunk_subtitle, None))
+
+                # End of sentence marker (only if not aborted)
+                if self.current_epoch == epoch:
+                    self.audio_queue.put(
+                        (epoch, np.array([], dtype=np.float32), "", None)
+                    )
+
             except Exception as e:
                 print(f"TTS Error: {e}", file=sys.stderr)
+                if event:
+                    event.set()
 
             self.text_queue.task_done()
 
     def _player_worker(self):
         """
         Consumes audio_queue, plays sound.
-        Item format: (audio_chunk, subtitles, completion_event)
+        Item format: (epoch, audio_chunk, subtitles, completion_event)
         """
         buffer = []
         buffer_duration = 0.0
+        current_playback_epoch = -1
 
         while True:
             item = self.audio_queue.get()
-            audio_chunk, incoming_subtitles, event = item
+            epoch, audio_chunk, incoming_subtitles, event = item
+
+            # 1. Stale Check
+            if epoch != self.current_epoch:
+                # Discard zombie chunks from old epochs
+                if event:
+                    event.set()
+                self.audio_queue.task_done()
+
+                # If we were buffering/playing this old epoch, clear buffer
+                if current_playback_epoch == epoch:
+                    buffer = []
+                    buffer_duration = 0.0
+                    self.subtitles = ""
+                continue
+
+            # Update local tracking
+            current_playback_epoch = epoch
 
             # --- Case 1: End of Request Marker ---
             if audio_chunk is None:
-                # Play everything remaining in the buffer immediately.
+                # Play everything remaining in the buffer
                 while len(buffer) > 0:
+                    # Double check epoch before playing from buffer (unlikely to change, but safe)
+                    if self.current_epoch != epoch:
+                        break
+
                     chunk_data, chunk_sub = buffer.pop(0)
-                    if chunk_sub:
+                    if chunk_sub is not None:
                         self.subtitles = chunk_sub
-                        print(f"[Speak1]: {self.subtitles}")
+
                     self._play_chunk_wrapper(chunk_data)
 
-                # Reset buffer state
                 buffer_duration = 0.0
                 self.subtitles = ""
 
-                # Signal completion
                 if event:
                     event.set()
                     with self.lock:
@@ -132,32 +179,33 @@ class Speak:
 
             # --- Case 2: Audio Chunk ---
 
-            # Check for interruptions (Correction)
+            # Check for interruptions (Correction logic - specific to 'current' pose corrections)
             if self.correction is not None:
                 current_keys = self.analyze_ongoing_frame().keys()
-                # If correction is still valid, stop current playback
                 if not (self.correction.keys() <= current_keys):
                     self._drain_queue_safely()
                     buffer = []
                     buffer_duration = 0.0
                     self.subtitles = ""
-
                     self.audio_queue.task_done()
                     self.move_marty_type_correctiv = None
                     continue
 
-            # Add to buffer
             buffer.append((audio_chunk, incoming_subtitles))
-
             duration = len(audio_chunk) / SAMPLE_RATE
             buffer_duration += duration
 
-            # Play if buffer is full enough
             while buffer_duration >= self.audio_chunk_margin_seconds:
+                # Late check: Ensure we haven't been cancelled while buffering
+                if self.current_epoch != epoch:
+                    buffer = []
+                    buffer_duration = 0.0
+                    break
+
                 chunk_data, chunk_sub = buffer.pop(0)
-                if chunk_sub:
+
+                if chunk_sub is not None:
                     self.subtitles = chunk_sub
-                    print(f"[Speak2]: {self.subtitles}")
 
                 dur = len(chunk_data) / SAMPLE_RATE
                 buffer_duration -= dur
@@ -168,10 +216,12 @@ class Speak:
 
     def _play_chunk_wrapper(self, chunk):
         """Helper to encapsulate stream management and pause logic."""
+        if len(chunk) == 0:
+            return
+
         if not self.stream.active:
             self.stream.start()
 
-        # Wait if paused
         while not self.can_i_speak():
             time.sleep(0.1)
 
@@ -179,22 +229,21 @@ class Speak:
 
     def _drain_queue_safely(self):
         """
-        Drains the audio queue. IMPORTANT: If we throw away an 'End of Request' marker,
-        we MUST set its event, otherwise the main thread will wait forever.
+        Drains queues. Sets events to prevent deadlocks.
         """
         while not self.audio_queue.empty():
             try:
                 item = self.audio_queue.get_nowait()
-                _, _, event = item
-                if event:
-                    event.set()  # Don't deadlock the waiter!
-                    with self.lock:
-                        self.active_tasks = max(0, self.active_tasks - 1)
+                # Unpack usually 4 items, but be safe
+                if isinstance(item, tuple) and len(item) >= 1:
+                    event = item[-1]
+                    if event and isinstance(event, threading.Event):
+                        event.set()
+                        with self.lock:
+                            self.active_tasks = max(0, self.active_tasks - 1)
                 self.audio_queue.task_done()
             except queue.Empty:
                 break
-        # Stop stream if needed to cut off sound immediately
-        # self.stream.stop()
 
     def _play_chunk(self, stream, chunk):
         duration = len(chunk) / SAMPLE_RATE
@@ -211,29 +260,38 @@ class Speak:
     def _coordinator_worker(self):
         """
         Consumes request_queue, runs Ollama.
-        Item format: (messages, model, completion_event, generate_audio)
+        Item format: (epoch, messages, model, completion_event, generate_audio)
         """
         while True:
             request = self.request_queue.get()
-            messages, model, event, generate_audio = request
+            epoch, messages, model, event, generate_audio = request
+
+            # 1. Stale Check
+            if epoch != self.current_epoch:
+                if event:
+                    event.set()
+                self.request_queue.task_done()
+                continue
 
             # 1. Generate text
-            self._run_ollama_generation(messages, model, generate_audio)
+            self._run_ollama_generation(epoch, messages, model, generate_audio)
 
             # 2. Push End-of-Request marker to TTS
-            # The event travels: Coordinator -> TTS -> Player -> Event.set()
-            self.text_queue.put((None, event, generate_audio))
+            self.text_queue.put((epoch, None, event, generate_audio))
 
-            # 3. DO NOT WAIT. Immediately process next request.
             self.request_queue.task_done()
 
-    def _run_ollama_generation(self, messages, model, generate_audio):
+    def _run_ollama_generation(self, epoch, messages, model, generate_audio):
         try:
             stream = ollama.chat(model=model, messages=messages, stream=True)
             buffer = ""
             sentence_endings = re.compile(r"(?<=[.!?])\s+")
 
             for chunk in stream:
+                # Check for interrupt during generation
+                if epoch != self.current_epoch:
+                    break
+
                 content = chunk["message"]["content"]
                 buffer += content
                 self.generated_text += content
@@ -242,15 +300,14 @@ class Speak:
                 if len(parts) > 1:
                     for sentence in parts[:-1]:
                         if sentence.strip():
-                            # Push text with NO event
                             self.text_queue.put(
-                                (sentence.strip(), None, generate_audio)
+                                (epoch, sentence.strip(), None, generate_audio)
                             )
                     buffer = parts[-1]
 
             self.generated_text_callback()
-            if buffer.strip():
-                self.text_queue.put((buffer.strip(), None, generate_audio))
+            if buffer.strip() and epoch == self.current_epoch:
+                self.text_queue.put((epoch, buffer.strip(), None, generate_audio))
 
         except Exception as e:
             print(f"Ollama Error: {e}", file=sys.stderr)
@@ -262,21 +319,21 @@ class Speak:
 
     def say(self, messages, model="llama3.1", generate_audio=True):
         """
-        Queues a message.
-        Returns: threading.Event() that will be set when this specific message finishes playing.
+        Queues a message with the current epoch ID.
         """
         completion_event = threading.Event()
         with self.lock:
             self.generated_text = ""
             self.active_tasks += 1
+            # Capture current epoch for this request
+            current_epoch = self.current_epoch
 
-        self.request_queue.put((messages, model, completion_event, generate_audio))
+        self.request_queue.put(
+            (current_epoch, messages, model, completion_event, generate_audio)
+        )
         return completion_event
 
     def evaluate_prompt(self, messages, count=20, generate_audio=False):
-        """
-        Runs the provided prompt multiple times to evaluate text generation quality.
-        """
         print(f"--- Starting Evaluation ({count} runs) ---", file=sys.stderr)
         events = []
         for i in range(count):
@@ -284,7 +341,6 @@ class Speak:
             evt = self.say(messages, generate_audio=generate_audio)
             events.append(evt)
 
-        # Wait for all to finish
         for i, evt in enumerate(events):
             evt.wait()
             print(f"Run {i + 1} completed.", file=sys.stderr)
@@ -309,7 +365,6 @@ class Speak:
     def start_counter(self):
         """
         Injects WAV directly into audio queue.
-        Returns: threading.Event() that is set when audio finishes.
         """
         completion_event = threading.Event()
         file_path = "assets/countdown.wav"
@@ -329,15 +384,14 @@ class Speak:
 
             with self.lock:
                 self.active_tasks += 1
+                current_epoch = self.current_epoch
 
-            # Inject directly to audio queue
-            # Format: (AudioData, Subtitles, Event)
-            self.audio_queue.put((data, subtitles, None))
-            self.audio_queue.put((None, None, completion_event))
+            # Inject directly
+            self.audio_queue.put((current_epoch, data, subtitles, None))
+            self.audio_queue.put((current_epoch, None, None, completion_event))
 
         except FileNotFoundError:
             print(f"Error: {file_path} not found.", file=sys.stderr)
-            # If failed, set event immediately so we don't block
             completion_event.set()
         except Exception as e:
             print(f"Error in start_counter: {e}", file=sys.stderr)
@@ -364,7 +418,7 @@ class Speak:
         system_instruction = (
             "You are a friendly yoga coach. Introduce the pose, briefly describing it while being encouraging. "
             "Keep it to 2 sentences max with max sentence length of 15 words. "
-            "At the end say you will demonstrate the pose"
+            "At the end say you will demonstrate the pose. "
         )
         messages = [
             {"role": "system", "content": system_instruction},
@@ -373,12 +427,11 @@ class Speak:
         return self.say(messages)
 
     def corrective_feedback(self, correction: dict, pose):
-        # ... (rest of logic similar, just return self.say(...))
         system_instruction = (
             "You are a yoga coach. Receive the corrective feedback. You're inside of a discussion, no mention similar to 'during this pose'. "
             "Keep it to 1 sentences max with max sentence length of 15 words. Be very concise, only useful words. "
-            "Don't mention the numbers. No asterisks, No parentheses."
-            "Speak in the present tense and address the student directly without his name. Be creative."
+            "Don't mention the numbers. No asterisks, No parentheses. "
+            "Speak in the present tense and address the student directly without his name. Be creative. "
         )
         messages = [
             {"role": "system", "content": system_instruction},
@@ -388,14 +441,14 @@ class Speak:
         return self.say(messages, model="llama3.2")
 
     def end_pose_feedback(self, feedbacks):
-        self.empty_queues()  # This now handles setting events for cancelled items
+        self.empty_queues()
         self.correction = None
         self.generated_text = ""
         system_instruction = (
             "You are a friendly yoga coach. Receive the analysis report. "
             "Keep it to 2 sentences max with max sentence length of 20 words. "
             "Highlight a weak points if needed and suggest one improvement tip but be encouraging and positive. "
-            "No numbers, no asterisks and no parentheses."
+            "No numbers, no asterisks and no parentheses. "
             "You can use metaphors if needed. "
         )
         messages = [
@@ -416,18 +469,23 @@ class Speak:
         self.audio_queue.join()
 
     def empty_queues(self):
-        """Empties queues and ENSURES events are set."""
+        """
+        Invalidates current epoch (cancelling all in-flight tasks)
+        and drains queues.
+        """
+        # 1. Invalidate everything currently running
+        with self.lock:
+            self.current_epoch += 1
+            self.active_tasks = 0
 
-        # Helper to drain a queue and set events
+        # 2. Drain queues to remove stale items physically (optional but good for RAM)
         def drain(q):
             while not q.empty():
                 try:
                     item = q.get_nowait()
-                    # Check structure based on which queue it is
-                    # Audio/Text queue items are (payload, event)
-                    # Request queue items are (msgs, model, event)
+                    # Event is always last
                     if isinstance(item, tuple) and len(item) >= 1:
-                        event = item[-1]  # Event is always last
+                        event = item[-1]
                         if isinstance(event, threading.Event):
                             event.set()
                     q.task_done()
@@ -437,6 +495,3 @@ class Speak:
         drain(self.request_queue)
         drain(self.text_queue)
         drain(self.audio_queue)
-
-        with self.lock:
-            self.active_tasks = 0
