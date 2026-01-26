@@ -116,14 +116,14 @@ class MyMarty(Marty):
         leg_parts = ["Hip", "Knee", "Ankle"]
 
         text = self.generated_text()
-        limb_lower = text.lower()
+        text_lower = text.lower()
 
-        has_arm = any(part.lower() in limb_lower for part in arm_parts)
-        has_leg = any(part.lower() in limb_lower for part in leg_parts)
-        has_spine = "spine" in limb_lower
+        has_arm = any(part.lower() in text_lower for part in arm_parts)
+        has_leg = any(part.lower() in text_lower for part in leg_parts)
+        has_spine = "spine" in text_lower
 
-        is_right = "right" in limb_lower
-        is_left = "left" in limb_lower
+        is_right = "right" in text_lower
+        is_left = "left" in text_lower
 
         if has_arm:
             # Move both if it's a general arm error, or just the specific side

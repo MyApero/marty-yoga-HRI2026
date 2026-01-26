@@ -63,6 +63,7 @@ Video feedback
 
 ## LLM Feedback
 - [ ] Prompt engineering
+- [ ] Give context to the LLM about previous conversations
 - [ ] Poses description
 - [ ] Bonus: {user name} {number of correction done} {time spent}
 
