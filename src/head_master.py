@@ -311,10 +311,11 @@ class HeadMaster:
                 elapsed=elapsed_time,
             )
             if self.marty and self.marty.is_empty and elapsed_time > led_update_marty + LED_MARTY_UPDATE_S :
-                biggest_error = self.max_error_margin
+                mean_error = self.max_error_margin
                 if len(self.actual_run) > 0:
-                    biggest_error = max(self.actual_run[-1].items(), key=lambda item: abs(item[1]["error"]))[1]["error"]
-                b, g, r = get_color_gradient(biggest_error, self.max_error_margin)
+                    errors = [val["error"] for val in self.actual_run[-1].values()]
+                    mean_error = sum(errors) / len(errors) if errors else 0
+                b, g, r = get_color_gradient(mean_error, self.max_error_margin)
                 hex = f"#{r:02X}{g:02X}{b:02X}"
                 self.marty.set_light_marty(hex, elapsed_time, self.pose_duration)
                 led_update_marty = elapsed_time

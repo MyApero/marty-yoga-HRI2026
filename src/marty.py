@@ -59,7 +59,6 @@ class MyMarty(Marty):
         while True:
             try:
                 type_move, duration, blocking = self.queue.get()
-                print(type_move)
                 if isinstance(type_move, dict) and type_move.keys().__contains__("LED"):
                         self.disco_color_eyepicker(colours=type_move["LED"], add_on="LEDeye")
                 elif isinstance(type_move, tuple) and type_move[0].__contains__("ankle"):

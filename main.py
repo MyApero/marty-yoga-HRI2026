@@ -30,7 +30,7 @@ def main():
             break
         if key == ord("d"):  # Press 'd' to demo yoga
             master.voice.intro()
-            master.do_exercise("chair")
+            # master.do_exercise("chair")
             master.do_exercise("left_warrior2")
             # master.do_exercise("right_warrior2")
             # master.do_exercise("mountain")
