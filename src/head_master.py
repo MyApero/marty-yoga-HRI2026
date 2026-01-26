@@ -1,16 +1,18 @@
 import cv2
 import os
 import time
+import logging
+import sys
+import toml
+
 from src.utils import load_toml
 from src.video_feedback import draw_skeleton
 from src.mediapipe_operations import setup_landmarker, apply_film_effect
 from src.feedback_preprocess import get_feedbacks_from_run
 from src.marty import MyMarty
 from src.speak import Speak
-import logging
-import sys
-import toml
 from src.camera import capture_image_from_camera
+from src.utils import get_color_gradient
 
 # Initial Setup
 CONFIG_FILE = "config.toml"
@@ -23,6 +25,7 @@ POSE_DURATION_S = 50
 SEND_CORRECTION_THRESHOLD = (
     0.6  # the lower, the higher the chance of sending correction
 )
+LED_MARTY_UPDATE_S = 0.8
 
 
 class HeadMaster:
@@ -51,6 +54,7 @@ class HeadMaster:
 
         self.pose_ended = True
         self.is_pose_ending = False
+        self.max_error_margin = self.config["feedback"]["max_error_margin"]
 
         self.logger = logging.getLogger(__name__)
         logging.basicConfig(level=logging_level)
@@ -97,7 +101,7 @@ class HeadMaster:
         for angle_name, angle_data in frame.items():
             if (
                 abs(angle_data["error"])
-                < self.config["feedback"]["max_error_margin"]
+                < self.max_error_margin
                 * SEND_CORRECTION_THRESHOLD
             ):
                 if (
@@ -279,6 +283,7 @@ class HeadMaster:
         elapsed_time = 0.0
         self.is_pose_ending = False
         self.pose_ended = False
+        led_update_marty = 0.0
         while elapsed_time < self.pose_duration:
             elapsed_time = time.time() - start_time
             timer_text = f"Time in pose: {int(elapsed_time)}s / {self.pose_duration}s"
@@ -291,7 +296,7 @@ class HeadMaster:
                 feedbacks = get_feedbacks_from_run(
                     self.actual_run,
                     elapsed_time,
-                    self.config["feedback"]["max_error_margin"],
+                    self.max_error_margin,
                 )
 
                 feedbacks["pose_name"] = self.pose_name
@@ -305,12 +310,22 @@ class HeadMaster:
                 timer_text=timer_text,
                 elapsed=elapsed_time,
             )
+            if self.marty and self.marty.is_empty and elapsed_time > led_update_marty + LED_MARTY_UPDATE_S :
+                biggest_error = self.max_error_margin
+                if len(self.actual_run) > 0:
+                    biggest_error = max(self.actual_run[-1].items(), key=lambda item: abs(item[1]["error"]))[1]["error"]
+                b, g, r = get_color_gradient(biggest_error, self.max_error_margin)
+                hex = f"#{r:02X}{g:02X}{b:02X}"
+                self.marty.set_light_marty(hex, elapsed_time, self.pose_duration)
+                led_update_marty = elapsed_time
             key = cv2.waitKey(1) & 0xFF
             if key == ord("q"):
                 break
             if key == ord("c"):
                 self.name_files = str(time.time())
 
+        if self.marty:
+            self.marty.disco_off()
         self.pose_ended = True
         return self.voice.generated_text
 
