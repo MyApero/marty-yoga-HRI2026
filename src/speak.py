@@ -17,6 +17,9 @@ SAMPLE_RATE = 24000
 AUDIO_CHUNK_MARGIN_S = 6.0
 
 
+COUNTDOWN_FILE_PATH = "assets/countdown.wav"
+COUNTDOWN_SUBTITLES = "Get ready. 3... 2... 1... Hold!"
+
 class Speak:
     def __init__(
         self,
@@ -46,6 +49,8 @@ class Speak:
         self.active_tasks = 0
         self.lock = threading.Lock()
 
+        self.memory = []
+
         self.current_epoch = 0
         self.current_sentence_keywords = set()
 
@@ -67,6 +72,19 @@ class Speak:
         threading.Thread(target=self._tts_worker, daemon=True).start()
         threading.Thread(target=self._player_worker, daemon=True).start()
         threading.Thread(target=self._coordinator_worker, daemon=True).start()
+
+    #TODO TEST MEMORY
+    def save_to_memory(self, text):
+        if text == COUNTDOWN_SUBTITLES:
+            return
+        with self.lock:
+            self.memory.append({"role": "assistant", "content": text})
+            # if len(self.memory) > 10: # Keep last 10 messages
+            #     self.memory.pop(0)
+            with open("voice_memory.toml", "w") as f:
+                import toml
+
+                toml.dump({"memory": self.memory}, f)
 
     def _tts_worker(self):
         """
@@ -151,6 +169,8 @@ class Speak:
                     chunk_data, chunk_sub = buffer.pop(0)
                     if chunk_sub is not None:
                         self.subtitles = chunk_sub
+                        self.save_to_memory(self.subtitles)
+
                     self._play_chunk_wrapper(chunk_data)
 
                 buffer_duration = 0.0
@@ -232,6 +252,7 @@ class Speak:
                 chunk_data, chunk_sub = buffer.pop(0)
                 if chunk_sub is not None:
                     self.subtitles = chunk_sub
+                    self.save_to_memory(self.subtitles)
 
                 dur = len(chunk_data) / SAMPLE_RATE
                 buffer_duration -= dur
@@ -328,14 +349,28 @@ class Speak:
     def say(self, messages, model="llama3.1", generate_audio=True):
         """
         Queues a message with the current epoch ID.
+        Injects memory of past assistant responses to prevent repetition.
         """
         completion_event = threading.Event()
         with self.lock:
             self.generated_text = ""
             self.active_tasks += 1
             current_epoch = self.current_epoch
+
+            # Create a shallow copy to avoid mutating the original
+            final_messages = list(messages)
+
+            # Inject memory before the last message (assumed to be the active User prompt)
+            # Structure becomes: [System, ..., Memory (History), ..., User]
+            if self.memory and len(final_messages) > 0:
+                last_msg = final_messages.pop()
+                final_messages.extend(self.memory)
+                final_messages.append(last_msg)
+            elif self.memory:
+                final_messages.extend(self.memory)
+
         self.request_queue.put(
-            (current_epoch, messages, model, completion_event, generate_audio)
+            (current_epoch, final_messages, model, completion_event, generate_audio)
         )
         return completion_event
 
@@ -368,10 +403,8 @@ class Speak:
 
     def start_counter(self):
         completion_event = threading.Event()
-        file_path = "assets/countdown.wav"
-        subtitles = "Get ready. 3... 2... 1... Hold!"
         try:
-            data, fs = sf.read(file_path, dtype="float32")
+            data, fs = sf.read(COUNTDOWN_FILE_PATH, dtype="float32")
             if fs != SAMPLE_RATE:
                 number_of_samples = round(len(data) * float(SAMPLE_RATE) / fs)
                 data = np.interp(
@@ -384,10 +417,10 @@ class Speak:
             with self.lock:
                 self.active_tasks += 1
                 current_epoch = self.current_epoch
-            self.audio_queue.put((current_epoch, data, subtitles, None))
+            self.audio_queue.put((current_epoch, data, COUNTDOWN_SUBTITLES, None))
             self.audio_queue.put((current_epoch, None, None, completion_event))
         except FileNotFoundError:
-            print(f"Error: {file_path} not found.", file=sys.stderr)
+            print(f"Error: {COUNTDOWN_FILE_PATH} not found.", file=sys.stderr)
             completion_event.set()
         except Exception as e:
             print(f"Error in start_counter: {e}", file=sys.stderr)

@@ -113,3 +113,42 @@ https://github.com/thewh1teagle/kokoro-onnx/releases
 ## Bonus
 
 Make marty more alive by mooving arms or legs when it is making a correctiv feedback
+
+
+# Calendar Todo
+
+Monday
+- [x] Send Email about
+  - [x] Title -> Coached Yoga: Bridging the Gap between Video and Human Instructors with Low-Cost Social Robotics
+  - [x] Where should we submit the video?
+
+- [x] Reliable pose progress with LEDs (simple)
+
+Tuesday
+  - [x] Apply Feedback on robot design
+  - [x] Redo abstract to add Video and Human Coaching
+  - [x] Remove some Future Work with what has been done
+  - [ ] Mise en forme du papier
+  - [ ] evaluation apprehension est-ce que le papier de recherche dit bien que les robot en créent moins que les humains
+  - [ ] citations 2025->2026
+  - [ ] citation ollama
+  - [ ] citation llama 3.1 et 3.2
+  - [ ] citation kokoro
+  - [ ] Is citation still relevant? (we removed LLM and TTS from the sentence) Adaptive feedback mechanisms and user profile memory could strengthen long-term companionship and personalisation \cite{shen2025artificial, kraus2022social}.
+
+Wednesday
+  - [x] Merge code
+  - [ ] Superposer les poses attendues et actuelles
+  - [ ] LLM Poses Description and HowTo to review
+  - [ ] Marty Warrior pose to improve
+  - [ ] Test memory (response quality, do we still have repetition of Welcome? Does it take a longer time to generate?)
+  - [ ] Marty has to show more emotion with LEDs
+  - [ ] Add image of a human doing the pose to the window
+  - [ ] Show desired mediapipe pose on window or on the photo
+  - [ ] Take new pictures for camera ready paper:
+    - [ ] Warrior2 (arm back and front)
+    - [ ] Chair (arms up)
+    - [ ] Screenshot of Video with mediapipe overlay and subtitles
+  - [ ] Record video
+  - [ ] Montage video
+  - [ ] Submit paper and video
