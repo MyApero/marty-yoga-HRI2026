@@ -40,38 +40,7 @@ def draw_skeleton(
             cv2.line(
                 image, coord_map[idx1], coord_map[idx2], line_color, 3, cv2.LINE_AA
             )
-
             cv2.circle(image, coord_map[idx1], 5, line_color, -1)
-
-        current_angle_value = None
-        angle_name = ""
-
-        for name, data in angles.items():
-            for pts in fb_settings["angles"]:
-                if pts["name"] == name and pts["points"][0][1] == idx1:
-                    current_angle_value = data["current_angle"]
-                    angle_name = name
-                    break
-
-        if current_angle_value is not None:
-            text_pos = (coord_map[idx1][0] + 10, coord_map[idx1][1] - 10)
-
-            label = (
-                f"{angle_name}: {int(current_angle_value)}deg"
-                if fb_settings.get("show_labels", True)
-                else f"{int(current_angle_value)}deg"
-            )
-
-            # cv2.putText(
-            #     image,
-            #     label,
-            #     text_pos,
-            #     cv2.FONT_HERSHEY_SIMPLEX,
-            #     fb_settings.get("text_scale", 0.5), # 0.2 is very small, 0.5 is better
-            #     line_color,
-            #     2,
-            #     cv2.LINE_AA
-            # )
 
     if name_file:
         folder_path = Path("poses/" + name_file)

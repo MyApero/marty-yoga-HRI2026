@@ -12,8 +12,8 @@
   - [x] Legs (careful to keep balance)
   - [ ] Ankles (twist left/right)
   - [ ] Back (bend forward/backward)
-- [ ] Showing pose progresion with number of LEDs
-- [ ] Showing correctness with LED colors (red/orange/green)
+- [x] Showing pose progresion with number of LEDs
+- [x] Showing correctness with LED colors (red/orange/green)
 
 - [ ] Bonus: Selecting a number by turning eyes or arm and showing the feedback with number of LEDs on eyes
 
