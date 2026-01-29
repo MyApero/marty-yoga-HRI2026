@@ -128,16 +128,21 @@ Tuesday
   - [x] Apply Feedback on robot design
   - [x] Redo abstract to add Video and Human Coaching
   - [x] Remove some Future Work with what has been done
-  - [ ] Mise en forme du papier
-  - [ ] evaluation apprehension est-ce que le papier de recherche dit bien que les robot en créent moins que les humains
-  - [ ] citations 2025->2026
-  - [ ] citation ollama
-  - [ ] citation llama 3.1 et 3.2
-  - [ ] citation kokoro
-  - [ ] Is citation still relevant? (we removed LLM and TTS from the sentence) Adaptive feedback mechanisms and user profile memory could strengthen long-term companionship and personalisation \cite{shen2025artificial, kraus2022social}.
+  - [x] citation ollama
+  - [x] citation kokoro
+  - [ ] Mise en forme du papier (partiellement)
+  - [x] evaluation apprehension est-ce que le papier de recherche dit bien que les robot en créent moins que les humains
+  - [x] citations 2025->2026
+  - [x] Add date to all website
+  - [x] citation llama 3.1 et 3.2
+  - [x] Is citation still relevant? (we removed LLM and TTS from the sentence) Adaptive feedback mechanisms and user profile memory could strengthen long-term companionship and personalisation \cite{shen2025artificial, kraus2022social}.
 
 Wednesday
   - [x] Merge code
+  - [x] Add llama3.1 and llama3.2
+  - [ ] add \Description{...} to all pictures in the paper
+  - [ ] add \includegraphics{...} or alt="{...}"
+  - [x] Revoir Conference/Publisher-Specific Requirements trop fatigué
   - [ ] Superposer les poses attendues et actuelles
   - [ ] LLM Poses Description and HowTo to review
   - [ ] Marty Warrior pose to improve
