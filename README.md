@@ -130,7 +130,10 @@ Tuesday
   - [x] Remove some Future Work with what has been done
   - [x] citation ollama
   - [x] citation kokoro
-  - [ ] Mise en forme du papier (partiellement)
+  - [ ] Mise en forme du papier
+    - [ ] descriptions images
+    - [ ] images de la page de garde
+    - [ ] CCS Concepts
   - [x] evaluation apprehension est-ce que le papier de recherche dit bien que les robot en créent moins que les humains
   - [x] citations 2025->2026
   - [x] Add date to all website
@@ -143,13 +146,13 @@ Wednesday
   - [ ] add \Description{...} to all pictures in the paper
   - [ ] add \includegraphics{...} or alt="{...}"
   - [x] Revoir Conference/Publisher-Specific Requirements trop fatigué
-  - [ ] Superposer les poses attendues et actuelles
+  - [x] Superposer les poses attendues et actuelles
   - [ ] LLM Poses Description and HowTo to review
   - [ ] Marty Warrior pose to improve
   - [ ] Test memory (response quality, do we still have repetition of Welcome? Does it take a longer time to generate?)
   - [ ] Marty has to show more emotion with LEDs
-  - [ ] Add image of a human doing the pose to the window
-  - [ ] Show desired mediapipe pose on window or on the photo
+  - [x] Add image of a human doing the pose to the window
+  - [x] Show desired mediapipe pose on window or on the photo
   - [ ] Take new pictures for camera ready paper:
     - [ ] Warrior2 (arm back and front)
     - [ ] Chair (arms up)
