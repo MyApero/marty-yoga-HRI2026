@@ -1,3 +1,5 @@
+yoga_name = "Utkatasana"
+
 [description]
 context = "The Chair Pose is a strengthening and heat-building asana that brings all parts of your body together into a cohesive and powerful whole. A deep squat, this pose immediately engages the strength of your legs, back, and ankles. It helps to build endurance and grounding."
 howto = """Chair Pose:
@@ -16,20 +18,20 @@ howto = """Chair Pose:
 # """
 
 [pose]
-"Right Wrist" = 179.01
-"Left Wrist" = 163.9
-"Right Elbow" = 154.11
-"Left Elbow" = 178.18
-"Right Shoulder" = 100.11
-"Left Shoulder" = 121.69
-"Right Knee" = 136.66
-"Left Knee" = 110.25
-"Right Hip" = 67.43
-"Left Hip" = 126.09
-Spine = 67.43
-"Spine Alignment" = 147.91
-"Right Ankle" = 144.37
-"Left Ankle" = 105.41
+"Right Wrist" = 156.43
+"Left Wrist" = 159.92
+"Right Elbow" = 155.56
+"Left Elbow" = 158.75
+"Right Shoulder" = 76.13
+"Left Shoulder" = 97.39
+"Right Knee" = 115.77
+"Left Knee" = 111.14
+"Right Hip" = 40.38
+"Left Hip" = 119.62
+Spine = 40.38
+"Spine Alignment" = 112.44
+"Right Ankle" = 95.66
+"Left Ankle" = 86.0
 
 [marty]
 LeftHip = 50

@@ -3,6 +3,7 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import numpy as np
 
+
 def setup_landmarker(model_path):
     base_options = python.BaseOptions(model_asset_path=model_path)
     options = vision.PoseLandmarkerOptions(

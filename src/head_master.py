@@ -4,6 +4,7 @@ import time
 import logging
 import sys
 import toml
+import mediapipe as mp
 
 from src.utils import load_toml
 from src.video_feedback import draw_skeleton
@@ -24,7 +25,7 @@ MARGIN_BEFORE_CORRECTION_FEEDBACK_S = 5
 TIME_GENERATION_END_FEEDBACK_S = 12.0
 POSE_DURATION_S = 50
 SEND_CORRECTION_THRESHOLD = (
-    0.6  # the lower, the higher the chance of sending correction
+    0.7  # the lower, the higher the chance of sending correction
 )
 LED_MARTY_UPDATE_S = 0.8
 
@@ -58,6 +59,8 @@ class HeadMaster:
             pose_name: load_toml(os.path.join(POSES_FOLDER, pose_name, "pose.toml"))
             for pose_name in POSES_LIST
         }
+        for name, pose in self.poses.items():
+            pose["image"] = self.load_pose_image(name, "image.jpg")
         self.actual_run = []
         self.history = []
         self.ongoing_mistakes = {}
@@ -160,15 +163,20 @@ class HeadMaster:
             self.voice.corrective_feedback(correction, self.poses[self.pose_name])
 
     def update_window(self, show_landmarks=False, timer_text="", elapsed=0.0):
-        self.process_image(show_landmarks, timer_text, elapsed)
+        self.process_camera_image(show_landmarks, timer_text, elapsed)
         if elapsed > MARGIN_BEFORE_CORRECTION_FEEDBACK_S:
             self.update_correction_feedback()
 
-    def process_image(self, show_landmarks=False, timer_text="", elapsed=0.0):
+    def process_camera_image(self, show_landmarks=False, timer_text="", elapsed=0.0):
         camera_image = capture_image_from_camera(self.camera)
-        output_frame = self.filter_image(camera_image)
+        frame = self.process_image(camera_image, show_landmarks, timer_text, elapsed)
+        cv2.imshow("Video Feedback", frame)
+        self.name_files = None
+
+    def process_image(self, image, show_landmarks=False, timer_text="", elapsed=0.0):
+        output_frame = self.filter_image(image)
         if show_landmarks:
-            result = self.analyze_image(camera_image)
+            result = self.analyze_image(image)
             if result.pose_landmarks:
                 self.actual_run.append(
                     draw_skeleton(
@@ -184,7 +192,7 @@ class HeadMaster:
             cv2.putText(
                 output_frame,
                 timer_text,
-                (output_frame.shape[1] - 250, 20),
+                (output_frame.shape[1] - 350, 20),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,
                 (255, 255, 255),
@@ -196,8 +204,7 @@ class HeadMaster:
         frame = cv2.resize(
             output_frame, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC
         )
-        cv2.imshow("Video Feedback", frame)
-        self.name_files = None
+        return frame
 
     def draw_overlays(self, frame):
         if self.voice.subtitles:
@@ -219,7 +226,7 @@ class HeadMaster:
                 (255, 255, 255),
                 2,
             )
-        if True:  # Debug mode
+        if self.logger.isEnabledFor(logging.DEBUG):
             cv2.rectangle(
                 frame,
                 (5, 5),
@@ -236,6 +243,30 @@ class HeadMaster:
                 (255, 255, 255),
                 2,
             )
+
+        # Pose image
+        if self.logger.isEnabledFor(logging.INFO):
+            if self.pose_name and self.poses[self.pose_name]["image"] is not None:
+                IMAGE_SIZE = 300
+                pose_image_resized = cv2.resize(
+                    self.poses[self.pose_name]["image"],
+                    (IMAGE_SIZE, IMAGE_SIZE),
+                    interpolation=cv2.INTER_CUBIC,
+                )
+                frame[10 : 10 + IMAGE_SIZE, 10 : 10 + IMAGE_SIZE] = pose_image_resized
+                full_pose_name = self.pose_name.replace("_", " ").title()
+                yoga_name = self.poses[self.pose_name].get("yoga_name", "")
+                if yoga_name:
+                    full_pose_name += f" ({yoga_name})"
+                cv2.putText(
+                    frame,
+                    full_pose_name,
+                    (10, IMAGE_SIZE + 35),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (255, 255, 255),
+                    2,
+                )
 
     def analyze_image(self, image):
         timestamp = int(time.time() * 1000)
@@ -345,6 +376,28 @@ class HeadMaster:
             self.marty.disco_off()
         self.pose_ended = True
         return self.voice.generated_text
+
+    def load_pose_image(self, pose_name, image_name="original.png"):
+        pose_path = os.path.join(POSES_FOLDER, pose_name, image_name)
+        try:
+            image = cv2.imread(pose_path)
+        except Exception as e:
+            print(f"Error loading pose image: {e}")
+            image = None
+        if image is None:
+            print(f"Could not read image at {pose_path}")
+        return image
+
+    def generate_yoga_images_with_landmarks(self):
+        for pose_name in ["chair", "left_warrior2"]:
+            self.pose_name = pose_name
+            self.name_files = f"pose_{pose_name}_{int(time.time())}"
+            image_bgr = self.load_pose_image(pose_name)
+            image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
+            frame = self.process_image(mp_image, show_landmarks=True)
+            cv2.imwrite(f"output_{pose_name}.jpg", frame)
+            print(f"Saved output_{pose_name}.jpg")
 
     def cleanup(self):
         self.camera.release()

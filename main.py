@@ -4,6 +4,7 @@ from src.head_master import HeadMaster
 from src.utils import load_toml
 
 import platform
+import logging
 
 CONFIG_FILE = "config.toml"
 current_os = platform.system().lower()
@@ -28,13 +29,16 @@ def main():
         if key == ord("q"):  # Press 'q' to quit
             master.cleanup()
             break
+        if key == ord("y"):  # Press 'y' to generate yoga images with landmarks
+            master.logger.setLevel(logging.WARNING)
+            master.generate_yoga_images_with_landmarks()
         if key == ord("d"):  # Press 'd' to demo yoga
             master.voice.intro()
             master.do_exercise("chair")
             master.do_exercise("left_warrior2")
             # master.do_exercise("right_warrior2")
             # master.do_exercise("mountain")
-        master.process_image()
+        master.process_camera_image()
 
 
 if __name__ == "__main__":

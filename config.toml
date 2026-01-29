@@ -1,4 +1,4 @@
-model_path = "pose_landmarker_full.task"
+model_path = "pose_landmarker_heavy.task"
 
 [config_common]
 marty = "bluetooth://Marty-Yoga"

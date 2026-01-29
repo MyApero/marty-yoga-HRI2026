@@ -1,3 +1,5 @@
+yoga_name = "Virabhadrasana II"
+
 [description]
 context = "Warrior 2 on the left side mirrors the benefits of the right, balancing the body's strength and flexibility. It focuses on strengthening the left leg and opening the left side of the pelvic girdle, ensuring symmetrical muscle development."
 howto = """Warrior 2 Pose:
@@ -9,20 +11,20 @@ howto = """Warrior 2 Pose:
 6. Turn your head to look past your left fingers, keeping the torso long and centered between the legs."""
 
 [pose]
-"Right Wrist" = 178.09
-"Left Wrist" = 178.46
-"Right Elbow" = 175.84
-"Left Elbow" = 178.17
-"Right Shoulder" = 85.56
-"Left Shoulder" = 106.06
-"Right Knee" = 179.79
-"Left Knee" = 145.36
-"Right Hip" = 114.5
-"Left Hip" = 120.04
-Spine = 114.5
-"Spine Alignment" = 160.4
-"Right Ankle" = 174.18
-"Left Ankle" = 126.2
+"Right Wrist" = 165.89
+"Left Wrist" = 172.81
+"Right Elbow" = 175.12
+"Left Elbow" = 173.43
+"Right Shoulder" = 98.28
+"Left Shoulder" = 85.21
+"Right Knee" = 92.17
+"Left Knee" = 168.04
+"Right Hip" = 82.64
+"Left Hip" = 128.18
+Spine = 140.69
+"Spine Alignment" = 169.5
+"Right Ankle" = 116.52
+"Left Ankle" = 175.13
 
 [marty]
 LeftHip = -24
