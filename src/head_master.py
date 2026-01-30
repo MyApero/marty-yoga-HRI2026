@@ -157,7 +157,7 @@ class HeadMaster:
             return
         correction = self.analyze_ongoing_frame()
         if bool(correction):
-            print(correction)
+            # print(correction)
             self.voice.correction = correction
             self.voice.move_marty_type_correctiv = correction
             self.voice.corrective_feedback(correction, self.poses[self.pose_name])
@@ -246,7 +246,7 @@ class HeadMaster:
 
         # Pose image
         if self.logger.isEnabledFor(logging.INFO):
-            if self.pose_name and self.poses[self.pose_name]["image"] is not None:
+            if self.pose_name and self.poses[self.pose_name]["image"] is not None and not self.pose_ended:
                 IMAGE_SIZE = 300
                 pose_image_resized = cv2.resize(
                     self.poses[self.pose_name]["image"],
@@ -344,7 +344,7 @@ class HeadMaster:
 
                 feedbacks["pose_name"] = self.pose_name
                 feedback_dump = toml.dumps(feedbacks)
-                print(feedback_dump)
+                # print(feedback_dump)
                 time.sleep(0.1)
                 self.voice.end_pose_feedback(feedback_dump)
 

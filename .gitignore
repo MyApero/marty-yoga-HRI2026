@@ -208,3 +208,5 @@ __marimo__/
 
 *.onnx
 *.bin
+.DS_Store
+voice_memory.toml

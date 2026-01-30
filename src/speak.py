@@ -79,8 +79,8 @@ class Speak:
             return
         with self.lock:
             self.memory.append({"role": "assistant", "content": text})
-            # if len(self.memory) > 10: # Keep last 10 messages
-            #     self.memory.pop(0)
+            if len(self.memory) > 2: # Keep last 10 messages
+                self.memory.pop(0)
             with open("voice_memory.toml", "w") as f:
                 import toml
 
