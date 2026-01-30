@@ -41,11 +41,11 @@ graph TD
 
 ## ⚙️ Prerequisites
 
-- Python: Version 3.10 (Latest)
+- **Python**: Version 3.10 (Latest)
 
-- Ollama: Installed and running.
+- **Ollama**: Installed and running.
 
-- Hardware:
+- **Hardware**:
 
     - Webcam (Laptop or external).
 
@@ -58,12 +58,12 @@ We recommend using uv for fast and reliable dependency management.
 **1. Clone the repository**
 ```Bash
 
-git clone git@github.com:MyApero/marty-yoga-HRI2026.git
+git clone https://github.com/MyApero/marty-yoga-HRI2026.git
 cd marty-yoga-HRI2026
 ```
 **2. Set up the Python Environment**
 
-Create a virtual environment anf use `uv` (ensure you are using Python 3.10):
+Create a virtual environment and use `uv` (ensure you are using Python 3.10):
 ```Bash
 python3.10 -m venv venv
 ```
