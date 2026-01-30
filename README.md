@@ -1,28 +1,32 @@
-# Marty, your new personal Yoga Coach!
+# Marty: Your Personal AI Yoga Coach 🧘‍♂️🤖
+## Bridging the gap between video tutorials and human instructors with low-cost social robotics.
 
-[View our Draft Video Demo on Youtube](https://youtu.be/3Od9CCHt7Os)
+🎥 [Watch the Demo Video](https://www.youtube.com/watch?v=3Od9CCHt7Os)
+## 📖 Overview
 
-# Marty's role as a robot
+Marty is an embodied Yoga Coach designed to provide real-time, interactive feedback during your yoga practice. By combining computer vision (MediaPipe) with Large Language Models (Llama 3 via Ollama) and high-quality Text-to-Speech (Kokoro), Marty observes your poses and offers corrective advice through movement, LED indicators, and voice.
+### Key Features
 
-- [x] Embodiment
-- [ ] 
-- [x] Pose demonstration
-- [x] Moving the body part to communicate corrections (non verbal)
-  - [x] Arms (jokes on elbow)
-  - [x] Legs (careful to keep balance)
-  - [ ] Ankles (twist left/right)
-  - [ ] Back (bend forward/backward)
-- [x] Showing pose progresion with number of LEDs
-- [x] Showing correctness with LED colors (red/orange/green)
+- **Embodiment**: Marty demonstrates poses and moves specific body parts (arms, legs) to communicate corrections non-verbally.
 
-- [ ] Bonus: Selecting a number by turning eyes or arm and showing the feedback with number of LEDs on eyes
+- **Visual Feedback**: Real-time LED indicators show pose progression (filling up) and correctness (Red/Orange/Green).
+- **Computer Vision**: Uses MediaPipe to track 3D landmarks and analyze joint angles against target yoga poses.
 
-# Marty's role as a coach
-- [x] Present himself at the beginning
-- [ ] Bonus: Select a voice for Marty
-- [ ] Bonus: Personalized user (tired, improving fast, remembering user's name)
+- **Intelligent Coaching**:
 
-# Global architecture
+    - **Instant Feedback**: Visual cues and non-verbal robot movements.
+
+    - **Corrective Feedback**: If a pose is incorrect for >5 seconds, LLM generates specific advice.
+
+    - **Positive Reinforcement**: Encouragement when a pose is held correctly for >30 seconds.
+
+    - **Privacy First**: Runs completely locally using offline models.
+
+## 🏗 Architecture
+
+The system processes video feed to analyze poses, triggering either immediate robotic feedback or generating synthesized verbal guidance via LLM/TTS.
+Code snippet
+
 ```mermaid
 graph TD
     A[Camera] --> B[Mediapipe landmarks]
@@ -35,125 +39,127 @@ graph TD
     E --> F[Speaker]
 ```
 
-## Using Mediapipe
-- [x] Getting landmarks from video feed.
-- [x] Bigger screen
-- [ ] Search for better mediapipe model
+## ⚙️ Prerequisites
 
-## Poses analysis algorithm
-Video feedback
-- [x] Defining target poses with thresholds
-- [x] Analyzing incoming landmarks against target poses
-- [x] Coloring landmarks and joints
-- [x] Déclencher corrective feedback when incorrect for more than 5 seconds
-- [x] Déclencher long feedback when correct for more than 30 seconds
-- [ ] Showing expected and current pose overlayed on video
-- [x] Bonus: Using 3D landmarks
+- Python: Version 3.10 (Latest)
 
-## Corrective LLM Feedback
-- [x] Use non verbal marty communication
-- [x] Bonus: Different prompt regarding our prior situation analysis (e.g. very high error)
-- [x] Prerecord voice and marty poses for common corrections (e.g. arms too low, back not straight) -> Llama 3.2 is fast enough
-- [ ] It cancels corrective feedback only if body parts present in the sentence are not present anymore in the mediapipe output when the voice is ready
-- [ ] Don't show text while voice is generating, show the hole thing at one (only for corrective feedback)
+- Ollama: Installed and running.
 
-## Camera
-- [x] Use laptop camera
-- [x] Use phone large angle camera connecting via wifi to have video feedback next to Marty
+- Hardware:
 
-## LLM Feedback
-- [ ] Prompt engineering
-- [ ] Give context to the LLM about previous conversations
-- [ ] Poses description
-- [ ] Bonus: {user name} {number of correction done} {time spent}
+    - Webcam (Laptop or external).
 
-## TTS
-- [x] TTS macos instant
-- [x] Kokoro high quality low latency TTS
-- [x] Bonus: Emotional TTS like CosyVoice -> Way too slow to run it at runtime
+    - Marty the Robot (optional for software testing, required for embodiment).
 
-# Code structure
-- [ ] use window.py for window operations
+## 📥 Installation
 
-# Run locally
-Use the environment variable `HF_HUB_OFFLINE=1` to run the code without internet connection.
+We recommend using uv for fast and reliable dependency management.
 
-# Going further
+**1. Clone the repository**
+```Bash
 
-- [ ] Explore this setup for exercices at home (planks, push-ups, squats, etc.)
-  - It could evaluate planks as a static pose and upper part of push-ups and bottom part of squats as static poses. It could also count the number of repetitions.
+git clone git@github.com:MyApero/marty-yoga-HRI2026.git
+cd marty-yoga-HRI2026
+```
+**2. Set up the Python Environment**
 
-# Optimizations
-
-- [ ] "3, 2, 1, hold" should show landmarks while saying it, not after.
-
-Using 25 sec to verify a pose and using the last 5 to start generating a thoughtful feedback (thinking mode).
-
-While he's speaking, we can capture the 5 last seconds to see if we need to say something about it or not.
-
-Bonus: Générer une séance de yoga personalisée et adaptées.
-
-Joint: L-Elbow, Angle: 156
-Joint: R-Elbow, Angle: 170
-Joint: L-Knee, Angle: 148
-Joint: R-Knee, Angle: 132
-Joint: L-Hip, Angle: 168
-Joint: R-Hip, Angle: 139
-Joint: L-Elbow, Angle: 157
-Joint: R-Elbow, Angle: 168
-Joint: L-Knee, Angle: 144
-Joint: R-Knee, Angle: 128
-Joint: L-Hip, Angle: 167
-Joint: R-Hip, Angle: 139
+Create a virtual environment anf use `uv` (ensure you are using Python 3.10):
+```Bash
+python3.10 -m venv venv
+```
+```Bash
+# Activate the environment
+# On macOS/Linux:
+source .venv/bin/activate
+```
+```Bash
+# Create virtual environment
+pip install uv
+```
 
 
-## Setup
-https://github.com/thewh1teagle/kokoro-onnx/releases
+**3. Install Dependencies**
+```Bash
+uv pip install -r requirements.txt
+```
+**4. Download Required Models**
 
-## Bonus
+You must place the following model files in the root directory (or your configured models folder):
 
-Make marty more alive by mooving arms or legs when it is making a correctiv feedback
+- **MediaPipe Model**:
 
+    - Download `pose_landmarker_full.task` from Google MediaPipe solutions.
 
-# Calendar Todo
+- **Kokoro TTS Models**:
 
-Monday
-- [x] Send Email about
-  - [x] Title -> Coached Yoga: Bridging the Gap between Video and Human Instructors with Low-Cost Social Robotics
-  - [x] Where should we submit the video?
+    - Download `kokoro-v1.0.onnx` and `voices-v1.0.bin` from [kokoro-onnx releases](https://github.com/thewh1teagle/kokoro-onnx/releases).
 
-- [x] Reliable pose progress with LEDs (simple)
+- **Ollama Models**:
 
-Tuesday
-  - [x] Apply Feedback on robot design
-  - [x] Redo abstract to add Video and Human Coaching
-  - [x] Remove some Future Work with what has been done
-  - [x] citation ollama
-  - [x] citation kokoro
-  - [ ] Mise en forme du papier (partiellement)
-  - [x] evaluation apprehension est-ce que le papier de recherche dit bien que les robot en créent moins que les humains
-  - [x] citations 2025->2026
-  - [x] Add date to all website
-  - [x] citation llama 3.1 et 3.2
-  - [x] Is citation still relevant? (we removed LLM and TTS from the sentence) Adaptive feedback mechanisms and user profile memory could strengthen long-term companionship and personalisation \cite{shen2025artificial, kraus2022social}.
+    - Pull the required Llama models:
 
-Wednesday
-  - [x] Merge code
-  - [x] Add llama3.1 and llama3.2
-  - [ ] add \Description{...} to all pictures in the paper
-  - [ ] add \includegraphics{...} or alt="{...}"
-  - [x] Revoir Conference/Publisher-Specific Requirements trop fatigué
-  - [ ] Superposer les poses attendues et actuelles
-  - [ ] LLM Poses Description and HowTo to review
-  - [ ] Marty Warrior pose to improve
-  - [ ] Test memory (response quality, do we still have repetition of Welcome? Does it take a longer time to generate?)
-  - [ ] Marty has to show more emotion with LEDs
-  - [ ] Add image of a human doing the pose to the window
-  - [ ] Show desired mediapipe pose on window or on the photo
-  - [ ] Take new pictures for camera ready paper:
-    - [ ] Warrior2 (arm back and front)
-    - [ ] Chair (arms up)
-    - [ ] Screenshot of Video with mediapipe overlay and subtitles
-  - [ ] Record video
-  - [ ] Montage video
-  - [ ] Submit paper and video
+```Bash
+
+ollama pull llama3.1
+ollama pull llama3.2
+```
+
+## 🚀 Usage
+
+**1. Start Ollama**
+
+Ensure the Ollama server is running in the background:
+```Bash
+ollama serve
+```
+
+**2. Run the Coach**
+
+Launch the main application:
+```Bash
+python main.py
+```
+
+Or in offline Mode
+
+```Bash
+
+# Using the script
+./run_offline.sh
+
+# OR manually
+export HF_HUB_OFFLINE=1
+python main.py
+```
+
+**3. Start the Session**
+
+Once the video window appears, press the `d` key on your keyboard to start the session and enable pose analysis.
+
+## 🛠 Configuration & Custom Poses
+
+You can customize the experience by editing the various `.toml` configuration files found in the project directory.
+
+**Adding New Poses**: Currently, adding new yoga poses requires manual code adjustments:
+
+- Explore the `poses/ folder` to understand the structure and requirements for defining a pose class.
+
+- Create your new pose definition following that structure.
+
+- Open `main.py`, import your new pose, and manually register it within the main execution loop.
+
+## 🧠 Technical Details
+
+- **Pose Analysis**: Calculates joint angles (Elbows, Knees, Hips) and compares them against defined thresholds for specific yoga poses.
+
+- **LLM Integration**: Uses Llama 3.2 (optimized for speed) to generate natural language corrections based on specific limb errors detected by the vision system.
+
+- **TTS**: Uses Kokoro (ONNX) for high-quality, low-latency speech synthesis.
+
+## 🤝 Contributing
+
+This project is a research prototype. Contributions to improve pose detection accuracy or add new yoga poses are welcome!
+
+## 📄 License
+**GNU GENERAL PUBLIC LICENSE**
+
