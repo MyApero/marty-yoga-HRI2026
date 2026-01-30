@@ -43,6 +43,8 @@ graph TD
 
 - **Python**: Version 3.10 (Latest)
 
+- **uv**: For dependency management.
+
 - **Ollama**: Installed and running.
 
 - **Hardware**:
@@ -65,18 +67,13 @@ cd marty-yoga-HRI2026
 
 Create a virtual environment and use `uv` (ensure you are using Python 3.10):
 ```Bash
-python3.10 -m venv venv
+uv venv --python 3.10
 ```
 ```Bash
 # Activate the environment
 # On macOS/Linux:
 source .venv/bin/activate
 ```
-```Bash
-# Create virtual environment
-pip install uv
-```
-
 
 **3. Install Dependencies**
 ```Bash
@@ -88,7 +85,7 @@ You must place the following model files in the root directory (or your configur
 
 - **MediaPipe Model**:
 
-    - Download `pose_landmarker_full.task` from Google MediaPipe solutions.
+    - Download `pose_landmarker_heavy.task` from Google MediaPipe solutions.
 
 - **Kokoro TTS Models**:
 
