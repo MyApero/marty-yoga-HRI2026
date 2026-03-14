@@ -12,6 +12,7 @@ import mediapipe as mp
 from src.utils import load_toml
 from src.mediapipe_operations import setup_landmarker
 from src.feedback_preprocess import get_feedbacks_from_run
+from src.feedback_engine import FeedbackEngine
 from src.marty import MyMarty
 from src.speak import Speak
 from src.camera import capture_image_from_camera
@@ -77,6 +78,11 @@ class HeadMaster:
         self.pose_ended = True
         self.is_pose_ending = False
         self.max_error_margin = self.config["feedback"]["max_error_margin"]
+        self.feedback_engine = FeedbackEngine(
+            self.max_error_margin,
+            send_correction_threshold=SEND_CORRECTION_THRESHOLD,
+        )
+        self.ongoing_mistakes = self.feedback_engine.ongoing_mistakes
 
     def init_camera(self, camera_index=0):
         return cv2.VideoCapture(camera_index)
@@ -114,46 +120,10 @@ class HeadMaster:
         return self.window_renderer.filter_image(image)
 
     def update_ongoing_frame(self, elapsed):
-        if len(self.actual_run) == 0:
-            return
-        frame = self.actual_run[-1]
-        for angle_name, angle_data in frame.items():
-            if (
-                abs(angle_data["error"])
-                < self.max_error_margin * SEND_CORRECTION_THRESHOLD
-            ):
-                if (
-                    angle_name in self.ongoing_mistakes
-                    and len(self.ongoing_mistakes[angle_name]["mistakes"][-1]) < 2
-                ):
-                    self.ongoing_mistakes[angle_name]["mistakes"][-1].append(elapsed)
-                    self.ongoing_mistakes[angle_name]["timed_mistake"] += (
-                        self.ongoing_mistakes[angle_name]["mistakes"][-1][1]
-                        - self.ongoing_mistakes[angle_name]["mistakes"][-1][0]
-                    )
-                continue
-            if angle_name not in self.ongoing_mistakes:
-                self.ongoing_mistakes[angle_name] = {
-                    "mistakes_repetitions": 0,
-                    "timed_mistake": 0,
-                    "remider_done": 0,
-                    "target_angle": angle_data["target_angle"],
-                    "current_angle": angle_data["current_angle"],
-                    "mistakes": [[elapsed]],
-                }
-            if len(self.ongoing_mistakes[angle_name]["mistakes"][-1]) > 1:
-                self.ongoing_mistakes[angle_name]["mistakes"].append([elapsed])
-                self.ongoing_mistakes[angle_name]["mistakes_repetitions"] += 1
+        self.feedback_engine.update_ongoing_frame(self.actual_run, elapsed)
 
     def analyze_ongoing_frame(self):
-        correction_to_do = {}
-        for angle_name, mistakes in self.ongoing_mistakes.items():
-            if len(mistakes["mistakes"][-1]) < 2:
-                correction_to_do[
-                    angle_name + " target:" + str(round(mistakes["target_angle"]))
-                ] = "current:" + str(round(mistakes["current_angle"]))
-                mistakes["remider_done"] += 1
-        return correction_to_do
+        return self.feedback_engine.analyze_ongoing_frame()
 
     def update_correction_feedback(self):
         if self.is_pose_ending or not self.voice.is_done():
@@ -260,7 +230,7 @@ class HeadMaster:
         start_time = time.time()
         timer_text = ""
         self.actual_run = []
-        self.ongoing_mistakes = {}
+        self.feedback_engine.reset()
         elapsed_time = 0.0
         self.is_pose_ending = False
         self.pose_ended = False
