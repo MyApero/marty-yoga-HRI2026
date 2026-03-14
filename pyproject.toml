@@ -4,7 +4,7 @@ requires = ["setuptools>=68"]
 
 [project]
 name = "marty-yoga"
-version = "0.1.0"
+version = "0.1.1"
 requires-python = ">=3.10"
 dependencies = [
     "opencv-python>=4.13",
@@ -17,4 +17,5 @@ dependencies = [
     "soundfile>=0.13",
     "kokoro>=0.9",
     "martypy>=3.7",
+    "pip>=23.0",
 ]
