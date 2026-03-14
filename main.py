@@ -28,10 +28,15 @@ def main():
     print("\n")
     master = HeadMaster(current_config=current_config)
 
-    while True:
-        key = cv2.waitKey(1) & 0xFF
-        if not master.tick(key):
-            break
+    try:
+        while True:
+            key = cv2.waitKey(1) & 0xFF
+            if not master.tick(key):
+                break
+    except KeyboardInterrupt:
+        print("\nInterrupted. Cleaning up...")
+    finally:
+        master.cleanup()
 
 
 if __name__ == "__main__":

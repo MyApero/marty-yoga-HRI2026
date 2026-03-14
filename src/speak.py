@@ -67,6 +67,8 @@ class Speak:
 
         self.current_epoch = 0
         self.current_sentence_keywords = set()
+        self.shutdown_event = threading.Event()
+        self.stream_lock = threading.Lock()
 
         self.audio_chunk_margin_seconds = audio_chunk_margin_seconds
 
@@ -83,9 +85,13 @@ class Speak:
         )
 
         # --- Initialize Threads ---
-        threading.Thread(target=self._tts_worker, daemon=True).start()
-        threading.Thread(target=self._player_worker, daemon=True).start()
-        threading.Thread(target=self._coordinator_worker, daemon=True).start()
+        self.threads = [
+            threading.Thread(target=self._tts_worker, daemon=True),
+            threading.Thread(target=self._player_worker, daemon=True),
+            threading.Thread(target=self._coordinator_worker, daemon=True),
+        ]
+        for thread in self.threads:
+            thread.start()
 
     # TODO: add focused tests for memory behavior.
     def save_to_memory(self, text):
@@ -104,8 +110,11 @@ class Speak:
         """
         Consumes text_queue, generates audio, pushes to audio_queue.
         """
-        while True:
-            item = self.text_queue.get()
+        while not self.shutdown_event.is_set():
+            try:
+                item = self.text_queue.get(timeout=0.1)
+            except queue.Empty:
+                continue
             epoch, text, event, generate_audio = item
 
             if epoch != self.current_epoch:
@@ -157,8 +166,11 @@ class Speak:
         buffer_duration = 0.0
         current_playback_epoch = -1
 
-        while True:
-            item = self.audio_queue.get()
+        while not self.shutdown_event.is_set():
+            try:
+                item = self.audio_queue.get(timeout=0.1)
+            except queue.Empty:
+                continue
             epoch, audio_chunk, incoming_subtitles, event = item
 
             # 1. Stale Check
@@ -178,6 +190,8 @@ class Speak:
             # --- Case 1: End of Request Marker ---
             if audio_chunk is None:
                 while len(buffer) > 0:
+                    if self.shutdown_event.is_set():
+                        break
                     if self.current_epoch != epoch:
                         break
                     chunk_data, chunk_sub = buffer.pop(0)
@@ -258,6 +272,10 @@ class Speak:
             buffer_duration += duration
 
             while buffer_duration >= self.audio_chunk_margin_seconds:
+                if self.shutdown_event.is_set():
+                    buffer = []
+                    buffer_duration = 0.0
+                    break
                 if self.current_epoch != epoch:
                     buffer = []
                     buffer_duration = 0.0
@@ -275,13 +293,25 @@ class Speak:
             self.audio_queue.task_done()
 
     def _play_chunk_wrapper(self, chunk):
+        if self.shutdown_event.is_set():
+            return
         if len(chunk) == 0:
             return
-        if not self.stream.active:
-            self.stream.start()
-        while not self.can_i_speak():
+        with self.stream_lock:
+            if self.shutdown_event.is_set():
+                return
+            try:
+                if not self.stream.active:
+                    self.stream.start()
+            except sd.PortAudioError:
+                if self.shutdown_event.is_set():
+                    return
+                raise
+        while not self.can_i_speak() and not self.shutdown_event.is_set():
             time.sleep(0.1)
-        self._play_chunk(self.stream, chunk)
+        if self.shutdown_event.is_set():
+            return
+        self._play_chunk(chunk)
 
     def _drain_queue_safely(self):
         while not self.audio_queue.empty():
@@ -297,7 +327,7 @@ class Speak:
             except queue.Empty:
                 break
 
-    def _play_chunk(self, stream, chunk):
+    def _play_chunk(self, chunk):
         duration = len(chunk) / SAMPLE_RATE
         if self.move_marty_enabled:
             if self.move_marty_callback and self.move_marty_type_corrective is None:
@@ -308,15 +338,27 @@ class Speak:
             ):
                 self.move_marty_corrective()
                 self.move_marty_type_corrective = None
-        stream.write(chunk)
+        with self.stream_lock:
+            if self.shutdown_event.is_set():
+                return
+            try:
+                self.stream.write(chunk)
+            except sd.PortAudioError:
+                # During shutdown, PortAudio can reject writes while the stream is being closed.
+                if self.shutdown_event.is_set():
+                    return
+                raise
 
     def _coordinator_worker(self):
         """
         Consumes request_queue, runs Ollama.
         Item format: (epoch, messages, model, completion_event, generate_audio)
         """
-        while True:
-            request = self.request_queue.get()
+        while not self.shutdown_event.is_set():
+            try:
+                request = self.request_queue.get(timeout=0.1)
+            except queue.Empty:
+                continue
             epoch, messages, model, event, generate_audio = request
 
             if epoch != self.current_epoch:
@@ -367,6 +409,9 @@ class Speak:
         Injects memory of past assistant responses to prevent repetition.
         """
         completion_event = threading.Event()
+        if self.shutdown_event.is_set():
+            completion_event.set()
+            return completion_event
         with self.lock:
             self.generated_text = ""
             self.active_tasks += 1
@@ -406,6 +451,9 @@ class Speak:
 
     def start_counter(self):
         completion_event = threading.Event()
+        if self.shutdown_event.is_set():
+            completion_event.set()
+            return completion_event
         try:
             data, fs = sf.read(COUNTDOWN_FILE_PATH, dtype="float32")
             if fs != SAMPLE_RATE:
@@ -478,3 +526,29 @@ class Speak:
         drain(self.request_queue)
         drain(self.text_queue)
         drain(self.audio_queue)
+
+    def shutdown(self):
+        if self.shutdown_event.is_set():
+            return
+        self.shutdown_event.set()
+        self.move_marty_enabled = False
+        self.empty_queues()
+
+        for thread in self.threads:
+            thread.join(timeout=0.5)
+
+        with self.stream_lock:
+            try:
+                if self.stream.active:
+                    self.stream.abort()
+            except Exception:
+                pass
+            try:
+                if self.stream.active:
+                    self.stream.stop()
+            except Exception:
+                pass
+            try:
+                self.stream.close()
+            except Exception:
+                pass

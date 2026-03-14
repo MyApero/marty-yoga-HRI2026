@@ -80,6 +80,7 @@ class HeadMaster:
             send_correction_threshold=SEND_CORRECTION_THRESHOLD,
         )
         self.ongoing_mistakes = self.feedback_engine.ongoing_mistakes
+        self._cleaned_up = False
 
     def set_interaction_state(self, new_state):
         if self.interaction_state == new_state:
@@ -346,5 +347,28 @@ class HeadMaster:
         return True
 
     def cleanup(self):
-        self.camera.release()
-        cv2.destroyAllWindows()
+        if self._cleaned_up:
+            return
+        self._cleaned_up = True
+
+        if self.marty:
+            try:
+                self.marty.disco_off()
+            except Exception:
+                pass
+
+        if self.voice:
+            try:
+                self.voice.shutdown()
+            except Exception:
+                pass
+
+        try:
+            self.camera.release()
+        except Exception:
+            pass
+
+        try:
+            cv2.destroyAllWindows()
+        except Exception:
+            pass
