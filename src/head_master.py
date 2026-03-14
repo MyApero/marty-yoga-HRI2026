@@ -81,54 +81,6 @@ class HeadMaster:
         )
         self.ongoing_mistakes = self.feedback_engine.ongoing_mistakes
 
-    @property
-    def pose_name(self):
-        return self.session.pose_name
-
-    @pose_name.setter
-    def pose_name(self, value):
-        self.session.pose_name = value
-
-    @property
-    def actual_run(self):
-        return self.session.actual_run
-
-    @actual_run.setter
-    def actual_run(self, value):
-        self.session.actual_run = value
-
-    @property
-    def history(self):
-        return self.session.history
-
-    @history.setter
-    def history(self, value):
-        self.session.history = value
-
-    @property
-    def name_files(self):
-        return self.session.name_files
-
-    @name_files.setter
-    def name_files(self, value):
-        self.session.name_files = value
-
-    @property
-    def pose_ended(self):
-        return self.session.pose_ended
-
-    @pose_ended.setter
-    def pose_ended(self, value):
-        self.session.pose_ended = value
-
-    @property
-    def is_pose_ending(self):
-        return self.session.is_pose_ending
-
-    @is_pose_ending.setter
-    def is_pose_ending(self, value):
-        self.session.is_pose_ending = value
-
     def set_interaction_state(self, new_state):
         if self.interaction_state == new_state:
             return
@@ -168,20 +120,19 @@ class HeadMaster:
             True,
             move_marty_callback_correctiv,
             self.analyze_ongoing_frame,
-            can_i_speak=lambda: self.pose_ended or not self.is_pose_ending,
+            can_i_speak=lambda: (
+                self.session.pose_ended or not self.session.is_pose_ending
+            ),
         )
 
-    def filter_image(self, image):
-        return self.window_renderer.filter_image(image)
-
     def update_ongoing_frame(self, elapsed):
-        self.feedback_engine.update_ongoing_frame(self.actual_run, elapsed)
+        self.feedback_engine.update_ongoing_frame(self.session.actual_run, elapsed)
 
     def analyze_ongoing_frame(self):
         return self.feedback_engine.analyze_ongoing_frame()
 
     def update_correction_feedback(self):
-        if self.is_pose_ending or not self.voice.is_done():
+        if self.session.is_pose_ending or not self.voice.is_done():
             return
         self.set_interaction_state(
             InteractionState.IN_POSE_CORRECTIVE_FEEDBACK_GENERATION
@@ -191,7 +142,9 @@ class HeadMaster:
             self.set_interaction_state(InteractionState.IN_POSE_CORRECTIVE_FEEDBACK)
             self.voice.correction = correction
             self.voice.move_marty_type_correctiv = correction
-            self.voice.corrective_feedback(correction, self.poses[self.pose_name])
+            self.voice.corrective_feedback(
+                correction, self.poses[self.session.pose_name]
+            )
         else:
             self.set_interaction_state(InteractionState.IN_POSE_NO_CORRECTIVE_FEEDBACK)
 
@@ -204,41 +157,32 @@ class HeadMaster:
         camera_image = capture_image_from_camera(self.camera)
         frame = self.process_image(camera_image, show_landmarks, timer_text, elapsed)
         self.window_renderer.show(frame)
-        self.name_files = None
+        self.session.name_files = None
 
     def process_image(self, image, show_landmarks=False, timer_text="", elapsed=0.0):
-        pose_data = self.poses.get(self.pose_name) if self.pose_name else None
+        pose_data = (
+            self.poses.get(self.session.pose_name) if self.session.pose_name else None
+        )
         interaction_state_text = self.interaction_state.name.replace("_", " ").title()
         frame, frame_angles = self.window_renderer.process_image(
             image,
             show_landmarks=show_landmarks,
             timer_text=timer_text,
-            pose_name=self.pose_name,
+            pose_name=self.session.pose_name,
             pose_data=pose_data,
-            pose_ended=self.pose_ended,
+            pose_ended=self.session.pose_ended,
             interaction_state_text=interaction_state_text,
-            name_file=self.name_files,
+            name_file=self.session.name_files,
             marty=self.marty,
             analyze_image=self.analyze_image,
         )
 
         if show_landmarks:
             if frame_angles is not None:
-                self.actual_run.append(frame_angles)
+                self.session.actual_run.append(frame_angles)
             self.update_ongoing_frame(elapsed)
 
         return frame
-
-    def draw_overlays(self, frame):
-        pose_data = self.poses.get(self.pose_name) if self.pose_name else None
-        interaction_state_text = self.interaction_state.name.replace("_", " ").title()
-        self.window_renderer.draw_overlays(
-            frame,
-            self.pose_name,
-            pose_data,
-            self.pose_ended,
-            interaction_state_text,
-        )
 
     def analyze_image(self, image):
         timestamp = int(time.time() * 1000)
@@ -249,14 +193,6 @@ class HeadMaster:
         feedback = self.do_pose()
         print()
         print("Feedback:", feedback)
-
-    def wait(self):
-        """Waits until all voice tasks are done, updating GUI."""
-        while not self.voice.is_done():
-            self.update_window(show_landmarks=False)
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord("q"):
-                break
 
     def wait_for_event(self, event):
         """
@@ -275,7 +211,7 @@ class HeadMaster:
 
     def load_pose(self, pose):
         self.set_interaction_state(InteractionState.PRESENTING)
-        self.pose_name = pose
+        self.session.pose_name = pose
 
         intro_done_event = self.voice.load_pose(self.poses[pose])
 
@@ -297,31 +233,31 @@ class HeadMaster:
         self.set_interaction_state(InteractionState.IN_POSE_NO_CORRECTIVE_FEEDBACK)
         start_time = time.time()
         timer_text = ""
-        self.actual_run = []
+        self.session.actual_run = []
         self.feedback_engine.reset()
         elapsed_time = 0.0
-        self.is_pose_ending = False
-        self.pose_ended = False
+        self.session.is_pose_ending = False
+        self.session.pose_ended = False
         led_update_marty = 0.0
         while elapsed_time < self.pose_duration:
             elapsed_time = time.time() - start_time
             timer_text = f"Time in pose: {int(elapsed_time)}s / {self.pose_duration}s"
 
             if (
-                not self.is_pose_ending
+                not self.session.is_pose_ending
                 and elapsed_time > self.pose_duration - TIME_GENERATION_END_FEEDBACK_S
             ):
-                self.is_pose_ending = True
+                self.session.is_pose_ending = True
                 self.set_interaction_state(
                     InteractionState.IN_POSE_END_FEEDBACK_GENERATION
                 )
                 feedbacks = get_feedbacks_from_run(
-                    self.actual_run,
+                    self.session.actual_run,
                     elapsed_time,
                     self.max_error_margin,
                 )
 
-                feedbacks["pose_name"] = self.pose_name
+                feedbacks["pose_name"] = self.session.pose_name
                 feedback_dump = toml.dumps(feedbacks)
                 # print(feedback_dump)
                 time.sleep(0.1)
@@ -339,8 +275,10 @@ class HeadMaster:
                 and elapsed_time > led_update_marty + LED_MARTY_UPDATE_S
             ):
                 mean_error = self.max_error_margin
-                if len(self.actual_run) > 0:
-                    errors = [val["error"] for val in self.actual_run[-1].values()]
+                if len(self.session.actual_run) > 0:
+                    errors = [
+                        val["error"] for val in self.session.actual_run[-1].values()
+                    ]
                     mean_error = sum(errors) / len(errors) if errors else 0
                 b, g, r = get_color_gradient(mean_error, self.max_error_margin)
                 hex = f"#{r:02X}{g:02X}{b:02X}"
@@ -350,11 +288,11 @@ class HeadMaster:
             if key == ord("q"):
                 break
             if key == ord("c"):
-                self.name_files = str(time.time())
+                self.session.name_files = str(time.time())
 
         if self.marty:
             self.marty.disco_off()
-        self.pose_ended = True
+        self.session.pose_ended = True
         self.set_interaction_state(InteractionState.IDLE)
         return self.voice.generated_text
 
@@ -371,14 +309,41 @@ class HeadMaster:
 
     def generate_yoga_images_with_landmarks(self):
         for pose_name in ["chair", "left_warrior2"]:
-            self.pose_name = pose_name
-            self.name_files = f"pose_{pose_name}_{int(time.time())}"
+            self.session.pose_name = pose_name
+            self.session.name_files = f"pose_{pose_name}_{int(time.time())}"
             image_bgr = self.load_pose_image(pose_name)
             image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
             frame = self.process_image(mp_image, show_landmarks=True)
             cv2.imwrite(f"output_{pose_name}.jpg", frame)
             print(f"Saved output_{pose_name}.jpg")
+
+    def run_demo(self, poses=None):
+        if poses is None:
+            poses = ["chair", "left_warrior2"]
+        self.voice.intro()
+        for pose in poses:
+            self.do_exercise(pose)
+
+    def handle_key_event(self, key):
+        if key == ord("q"):
+            self.cleanup()
+            return False
+        if key == ord("s"):
+            self.voice.intro()
+        elif key == ord("y"):
+            self.logger.setLevel(logging.WARNING)
+            self.generate_yoga_images_with_landmarks()
+        elif key == ord("d"):
+            self.run_demo()
+        return True
+
+    def tick(self, key):
+        keep_running = self.handle_key_event(key)
+        if not keep_running:
+            return False
+        self.process_camera_image()
+        return True
 
     def cleanup(self):
         self.camera.release()
