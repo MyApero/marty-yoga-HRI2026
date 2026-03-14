@@ -5,8 +5,8 @@ marty = "bluetooth://Marty-Yoga"
 camera = 0
 
 [config_macos]
-marty = "usb:///dev/tty.usbserial-10"
-camera = 1
+marty = "usb:///dev/tty.usbserial-210"
+camera = 0
 
 [config_linux]
 marty = "usb:///dev/ttyUSB0"

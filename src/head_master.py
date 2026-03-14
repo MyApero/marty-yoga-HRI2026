@@ -4,17 +4,19 @@ import time
 import logging
 import sys
 import toml
+from src.utils import loading_print, get_color_gradient
+
+loading_print("  Loading MediaPipe...")
 import mediapipe as mp
 
 from src.utils import load_toml
-from src.video_feedback import draw_skeleton
-from src.mediapipe_operations import setup_landmarker, apply_film_effect
+from src.mediapipe_operations import setup_landmarker
 from src.feedback_preprocess import get_feedbacks_from_run
 from src.marty import MyMarty
 from src.speak import Speak
 from src.camera import capture_image_from_camera
+from src.window import WindowRenderer
 from enum import Enum
-from src.utils import get_color_gradient
 
 # Initial Setup
 CONFIG_FILE = "config.toml"
@@ -46,11 +48,15 @@ class HeadMaster:
     def __init__(
         self, current_config, pose_duration=POSE_DURATION_S, logging_level=logging.INFO
     ):
+        self.logger = logging.getLogger(__name__)
+        logging.basicConfig(level=logging_level)
+
         self.config = load_toml(CONFIG_FILE)
         self.current_config = current_config
         self.camera = self.init_camera(self.current_config["camera"])
         self.marty = self.init_marty()
         self.voice = self.init_voice()
+        self.window_renderer = WindowRenderer(self.config, self.voice, self.logger)
         if self.marty:
             self.marty.init_generated_text(self.voice.generated_text_callback)
         self.pose_name = None
@@ -71,9 +77,6 @@ class HeadMaster:
         self.pose_ended = True
         self.is_pose_ending = False
         self.max_error_margin = self.config["feedback"]["max_error_margin"]
-
-        self.logger = logging.getLogger(__name__)
-        logging.basicConfig(level=logging_level)
 
     def init_camera(self, camera_index=0):
         return cv2.VideoCapture(camera_index)
@@ -108,7 +111,7 @@ class HeadMaster:
         )
 
     def filter_image(self, image):
-        return apply_film_effect(image.numpy_view(), self.config["film_settings"])
+        return self.window_renderer.filter_image(image)
 
     def update_ongoing_frame(self, elapsed):
         if len(self.actual_run) == 0:
@@ -170,103 +173,38 @@ class HeadMaster:
     def process_camera_image(self, show_landmarks=False, timer_text="", elapsed=0.0):
         camera_image = capture_image_from_camera(self.camera)
         frame = self.process_image(camera_image, show_landmarks, timer_text, elapsed)
-        cv2.imshow("Video Feedback", frame)
+        self.window_renderer.show(frame)
         self.name_files = None
 
     def process_image(self, image, show_landmarks=False, timer_text="", elapsed=0.0):
-        output_frame = self.filter_image(image)
-        if show_landmarks:
-            result = self.analyze_image(image)
-            if result.pose_landmarks:
-                self.actual_run.append(
-                    draw_skeleton(
-                        output_frame,
-                        result.pose_landmarks,
-                        self.config,
-                        self.poses[self.pose_name]["pose"],
-                        self.name_files,
-                        self.marty,
-                    )
-                )
-            self.update_ongoing_frame(elapsed)
-            cv2.putText(
-                output_frame,
-                timer_text,
-                (output_frame.shape[1] - 350, 20),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                (255, 255, 255),
-                2,
-            )
-
-        self.draw_overlays(output_frame)
-
-        frame = cv2.resize(
-            output_frame, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC
+        pose_data = self.poses.get(self.pose_name) if self.pose_name else None
+        frame, frame_angles = self.window_renderer.process_image(
+            image,
+            show_landmarks=show_landmarks,
+            timer_text=timer_text,
+            pose_name=self.pose_name,
+            pose_data=pose_data,
+            pose_ended=self.pose_ended,
+            name_file=self.name_files,
+            marty=self.marty,
+            analyze_image=self.analyze_image,
         )
+
+        if show_landmarks:
+            if frame_angles is not None:
+                self.actual_run.append(frame_angles)
+            self.update_ongoing_frame(elapsed)
+
         return frame
 
     def draw_overlays(self, frame):
-        if self.voice.subtitles:
-            cv2.rectangle(
-                frame,
-                (5, frame.shape[0] - 40),
-                (frame.shape[1] - 5, frame.shape[0] - 5),
-                (0, 0, 0),
-                -1,
-            )
-            # Show only last 18 words
-            showed_text = " ".join(self.voice.subtitles.split()[-18:])
-            cv2.putText(
-                frame,
-                showed_text,
-                (10, frame.shape[0] - 20),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                (255, 255, 255),
-                2,
-            )
-        if self.logger.isEnabledFor(logging.DEBUG):
-            cv2.rectangle(
-                frame,
-                (5, 5),
-                (600, 40),
-                (0, 0, 0),
-                -1,
-            )
-            cv2.putText(
-                frame,
-                f"Voice Queue: {self.voice.text_queue.qsize()}, Audio Queue: {self.voice.audio_queue.qsize()}, request Queue: {self.voice.request_queue.qsize()}",
-                (10, 30),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                (255, 255, 255),
-                2,
-            )
-
-        # Pose image
-        if self.logger.isEnabledFor(logging.INFO):
-            if self.pose_name and self.poses[self.pose_name]["image"] is not None and not self.pose_ended:
-                IMAGE_SIZE = 300
-                pose_image_resized = cv2.resize(
-                    self.poses[self.pose_name]["image"],
-                    (IMAGE_SIZE, IMAGE_SIZE),
-                    interpolation=cv2.INTER_CUBIC,
-                )
-                frame[10 : 10 + IMAGE_SIZE, 10 : 10 + IMAGE_SIZE] = pose_image_resized
-                full_pose_name = self.pose_name.replace("_", " ").title()
-                yoga_name = self.poses[self.pose_name].get("yoga_name", "")
-                if yoga_name:
-                    full_pose_name += f" ({yoga_name})"
-                cv2.putText(
-                    frame,
-                    full_pose_name,
-                    (10, IMAGE_SIZE + 35),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6,
-                    (255, 255, 255),
-                    2,
-                )
+        pose_data = self.poses.get(self.pose_name) if self.pose_name else None
+        self.window_renderer.draw_overlays(
+            frame,
+            self.pose_name,
+            pose_data,
+            self.pose_ended,
+        )
 
     def analyze_image(self, image):
         timestamp = int(time.time() * 1000)

@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+
+
+[project]
+name = "marty-yoga"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "opencv-python>=4.13",
+    "mediapipe>=0.10",
+    "numpy>=2.0",
+    "toml>=0.10",
+    "tomli>=2.0",
+    "ollama>=0.6",
+    "sounddevice>=0.5",
+    "soundfile>=0.13",
+    "kokoro>=0.9",
+    "martypy>=3.7",
+]

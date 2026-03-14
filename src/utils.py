@@ -164,3 +164,6 @@ def get_lerp_color(current, target, margin):
     r = int(255 * factor)
     g = int(255 * (1 - factor))
     return (0, g, r)
+
+def loading_print(arg):
+    print(arg + "                                                    ", end="\r", flush=True)

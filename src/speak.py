@@ -1,5 +1,7 @@
 import ollama
 import sounddevice as sd
+from src.utils import loading_print
+loading_print("  Loading Kokoro TTS model...")
 from kokoro import KPipeline as Kokoro
 import threading
 import queue
