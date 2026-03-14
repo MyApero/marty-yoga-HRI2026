@@ -13,6 +13,7 @@ from src.utils import load_toml
 from src.mediapipe_operations import setup_landmarker
 from src.feedback_preprocess import get_feedbacks_from_run
 from src.feedback_engine import FeedbackEngine
+from src.session_state import SessionState
 from src.marty import MyMarty
 from src.speak import Speak
 from src.camera import capture_image_from_camera
@@ -56,11 +57,12 @@ class HeadMaster:
         self.current_config = current_config
         self.camera = self.init_camera(self.current_config["camera"])
         self.marty = self.init_marty()
+        self.session = SessionState()
+        self.interaction_state = InteractionState.IDLE
         self.voice = self.init_voice()
         self.window_renderer = WindowRenderer(self.config, self.voice, self.logger)
         if self.marty:
             self.marty.init_generated_text(self.voice.generated_text_callback)
-        self.pose_name = None
         self.pose_duration = pose_duration  # seconds
         self.poses = {
             pose_name: load_toml(os.path.join(POSES_FOLDER, pose_name, "pose.toml"))
@@ -68,21 +70,74 @@ class HeadMaster:
         }
         for name, pose in self.poses.items():
             pose["image"] = self.load_pose_image(name, "image.jpg")
-        self.actual_run = []
-        self.history = []
         self.ongoing_mistakes = {}
-        self.name_files = None
 
         self.landmarker = setup_landmarker(self.config["model_path"])
 
-        self.pose_ended = True
-        self.is_pose_ending = False
         self.max_error_margin = self.config["feedback"]["max_error_margin"]
         self.feedback_engine = FeedbackEngine(
             self.max_error_margin,
             send_correction_threshold=SEND_CORRECTION_THRESHOLD,
         )
         self.ongoing_mistakes = self.feedback_engine.ongoing_mistakes
+
+    @property
+    def pose_name(self):
+        return self.session.pose_name
+
+    @pose_name.setter
+    def pose_name(self, value):
+        self.session.pose_name = value
+
+    @property
+    def actual_run(self):
+        return self.session.actual_run
+
+    @actual_run.setter
+    def actual_run(self, value):
+        self.session.actual_run = value
+
+    @property
+    def history(self):
+        return self.session.history
+
+    @history.setter
+    def history(self, value):
+        self.session.history = value
+
+    @property
+    def name_files(self):
+        return self.session.name_files
+
+    @name_files.setter
+    def name_files(self, value):
+        self.session.name_files = value
+
+    @property
+    def pose_ended(self):
+        return self.session.pose_ended
+
+    @pose_ended.setter
+    def pose_ended(self, value):
+        self.session.pose_ended = value
+
+    @property
+    def is_pose_ending(self):
+        return self.session.is_pose_ending
+
+    @is_pose_ending.setter
+    def is_pose_ending(self, value):
+        self.session.is_pose_ending = value
+
+    def set_interaction_state(self, new_state):
+        if self.interaction_state == new_state:
+            return
+        self.logger.debug(
+            "Interaction transition: %s -> %s",
+            self.interaction_state.name,
+            new_state.name,
+        )
+        self.interaction_state = new_state
 
     def init_camera(self, camera_index=0):
         return cv2.VideoCapture(camera_index)
@@ -128,12 +183,17 @@ class HeadMaster:
     def update_correction_feedback(self):
         if self.is_pose_ending or not self.voice.is_done():
             return
+        self.set_interaction_state(
+            InteractionState.IN_POSE_CORRECTIVE_FEEDBACK_GENERATION
+        )
         correction = self.analyze_ongoing_frame()
         if bool(correction):
-            # print(correction)
+            self.set_interaction_state(InteractionState.IN_POSE_CORRECTIVE_FEEDBACK)
             self.voice.correction = correction
             self.voice.move_marty_type_correctiv = correction
             self.voice.corrective_feedback(correction, self.poses[self.pose_name])
+        else:
+            self.set_interaction_state(InteractionState.IN_POSE_NO_CORRECTIVE_FEEDBACK)
 
     def update_window(self, show_landmarks=False, timer_text="", elapsed=0.0):
         self.process_camera_image(show_landmarks, timer_text, elapsed)
@@ -148,6 +208,7 @@ class HeadMaster:
 
     def process_image(self, image, show_landmarks=False, timer_text="", elapsed=0.0):
         pose_data = self.poses.get(self.pose_name) if self.pose_name else None
+        interaction_state_text = self.interaction_state.name.replace("_", " ").title()
         frame, frame_angles = self.window_renderer.process_image(
             image,
             show_landmarks=show_landmarks,
@@ -155,6 +216,7 @@ class HeadMaster:
             pose_name=self.pose_name,
             pose_data=pose_data,
             pose_ended=self.pose_ended,
+            interaction_state_text=interaction_state_text,
             name_file=self.name_files,
             marty=self.marty,
             analyze_image=self.analyze_image,
@@ -169,11 +231,13 @@ class HeadMaster:
 
     def draw_overlays(self, frame):
         pose_data = self.poses.get(self.pose_name) if self.pose_name else None
+        interaction_state_text = self.interaction_state.name.replace("_", " ").title()
         self.window_renderer.draw_overlays(
             frame,
             self.pose_name,
             pose_data,
             self.pose_ended,
+            interaction_state_text,
         )
 
     def analyze_image(self, image):
@@ -210,23 +274,27 @@ class HeadMaster:
             self.marty.load_and_do_pose(POSES_FOLDER + "mountain/pose.toml")
 
     def load_pose(self, pose):
+        self.set_interaction_state(InteractionState.PRESENTING)
         self.pose_name = pose
 
         intro_done_event = self.voice.load_pose(self.poses[pose])
 
         explanation_done_event = self.voice.show_pose(self.poses[pose])
         self.wait_for_event(intro_done_event)
+        self.set_interaction_state(InteractionState.EXPLAINING_POSE)
         self.voice.move_marty_enabled = False
         if self.marty:
             self.marty.load_and_do_pose(POSES_FOLDER + pose + "/pose.toml")
 
         self.wait_for_event(explanation_done_event)
         self.reset_marty_pos()
+        self.set_interaction_state(InteractionState.COUNTDOWN)
         counter_done_event = self.voice.start_counter()
         self.wait_for_event(counter_done_event)
         self.voice.move_marty_enabled = True
 
     def do_pose(self):
+        self.set_interaction_state(InteractionState.IN_POSE_NO_CORRECTIVE_FEEDBACK)
         start_time = time.time()
         timer_text = ""
         self.actual_run = []
@@ -244,6 +312,9 @@ class HeadMaster:
                 and elapsed_time > self.pose_duration - TIME_GENERATION_END_FEEDBACK_S
             ):
                 self.is_pose_ending = True
+                self.set_interaction_state(
+                    InteractionState.IN_POSE_END_FEEDBACK_GENERATION
+                )
                 feedbacks = get_feedbacks_from_run(
                     self.actual_run,
                     elapsed_time,
@@ -254,6 +325,7 @@ class HeadMaster:
                 feedback_dump = toml.dumps(feedbacks)
                 # print(feedback_dump)
                 time.sleep(0.1)
+                self.set_interaction_state(InteractionState.END_FEEDBACK)
                 self.voice.end_pose_feedback(feedback_dump)
 
             self.update_window(
@@ -283,6 +355,7 @@ class HeadMaster:
         if self.marty:
             self.marty.disco_off()
         self.pose_ended = True
+        self.set_interaction_state(InteractionState.IDLE)
         return self.voice.generated_text
 
     def load_pose_image(self, pose_name, image_name="original.png"):

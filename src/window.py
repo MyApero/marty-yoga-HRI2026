@@ -25,6 +25,7 @@ class WindowRenderer:
         pose_name=None,
         pose_data=None,
         pose_ended=True,
+        interaction_state_text=None,
         name_file=None,
         marty=None,
         analyze_image=None,
@@ -53,14 +54,27 @@ class WindowRenderer:
                 2,
             )
 
-        self.draw_overlays(output_frame, pose_name, pose_data, pose_ended)
+        self.draw_overlays(
+            output_frame,
+            pose_name,
+            pose_data,
+            pose_ended,
+            interaction_state_text,
+        )
 
         frame = cv2.resize(
             output_frame, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC
         )
         return frame, frame_angles
 
-    def draw_overlays(self, frame, pose_name, pose_data, pose_ended):
+    def draw_overlays(
+        self,
+        frame,
+        pose_name,
+        pose_data,
+        pose_ended,
+        interaction_state_text=None,
+    ):
         if self.voice.subtitles:
             cv2.rectangle(
                 frame,
@@ -79,6 +93,43 @@ class WindowRenderer:
                 0.7,
                 (255, 255, 255),
                 2,
+            )
+
+        if interaction_state_text:
+            state_label = f"State: {interaction_state_text}"
+            state_font = cv2.FONT_HERSHEY_SIMPLEX
+            state_scale = 0.6
+            state_thickness = 2
+            text_size, baseline = cv2.getTextSize(
+                state_label,
+                state_font,
+                state_scale,
+                state_thickness,
+            )
+            text_width, text_height = text_size
+            margin = 10
+
+            # Keep state text above the subtitle area.
+            text_x = frame.shape[1] - text_width - margin
+            text_y = frame.shape[0] - 48
+
+            rect_top_left = (text_x - 8, text_y - text_height - 6)
+            rect_bottom_right = (text_x + text_width + 8, text_y + baseline + 6)
+            cv2.rectangle(
+                frame,
+                rect_top_left,
+                rect_bottom_right,
+                (0, 0, 0),
+                -1,
+            )
+            cv2.putText(
+                frame,
+                state_label,
+                (text_x, text_y),
+                state_font,
+                state_scale,
+                (255, 255, 255),
+                state_thickness,
             )
 
         if self.logger.isEnabledFor(logging.DEBUG):
