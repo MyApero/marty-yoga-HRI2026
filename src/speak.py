@@ -1,6 +1,7 @@
 import ollama
 import sounddevice as sd
 from src.utils import loading_print
+
 loading_print("  Loading Kokoro TTS model...")
 from kokoro import KPipeline as Kokoro
 import threading
@@ -11,6 +12,15 @@ import sys
 import soundfile as sf
 import numpy as np
 from src.extract_body_parts import extract_keywords, SYNONYMS
+from src.speak_prompts import (
+    INTRO_MODEL,
+    CORRECTIVE_FEEDBACK_MODEL,
+    build_intro_messages,
+    build_show_pose_messages,
+    build_load_pose_messages,
+    build_corrective_feedback_messages,
+    build_end_pose_feedback_messages,
+)
 
 # --- Configuration ---
 VOICE_NAME = "am_michael"
@@ -21,6 +31,8 @@ AUDIO_CHUNK_MARGIN_S = 6.0
 
 COUNTDOWN_FILE_PATH = "assets/countdown.wav"
 COUNTDOWN_SUBTITLES = "Get ready. 3... 2... 1... Hold!"
+MAX_MEMORY_MESSAGES = 10
+
 
 class Speak:
     def __init__(
@@ -75,13 +87,13 @@ class Speak:
         threading.Thread(target=self._player_worker, daemon=True).start()
         threading.Thread(target=self._coordinator_worker, daemon=True).start()
 
-    #TODO TEST MEMORY
+    # TODO: add focused tests for memory behavior.
     def save_to_memory(self, text):
         if text == COUNTDOWN_SUBTITLES:
             return
         with self.lock:
             self.memory.append({"role": "assistant", "content": text})
-            if len(self.memory) > 2: # Keep last 10 messages
+            if len(self.memory) > MAX_MEMORY_MESSAGES:
                 self.memory.pop(0)
             with open("voice_memory.toml", "w") as f:
                 import toml
@@ -389,19 +401,7 @@ class Speak:
         print("--- Evaluation Complete ---", file=sys.stderr)
 
     def intro(self):
-        system_instruction = (
-            "You are a friendly yoga coach named Marty. Introduce yourself and greet the student warmly. "
-            "Keep it to max length of 25 words. No -, use more dots than commas. No questions."
-            "Make it sound like a natural conversation."
-        )
-        messages = [
-            {"role": "system", "content": system_instruction},
-            {
-                "role": "user",
-                "content": "Greet the student and introduce yourself as their yoga coach.",
-            },
-        ]
-        return self.say(messages, model="llama3.2")
+        return self.say(build_intro_messages(), model=INTRO_MODEL)
 
     def start_counter(self):
         completion_event = threading.Event()
@@ -430,61 +430,20 @@ class Speak:
         return completion_event
 
     def show_pose(self, pose):
-        system_instruction = (
-            "You are a friendly yoga coach. Explain the pose. "
-            "Keep it simple in 2 sentences of 15 words"
-            "Make it like you were in a discution"
-        )
-        messages = [
-            {"role": "system", "content": system_instruction},
-            {
-                "role": "user",
-                "content": f"Pose details: {str(pose['description']['howto'])}",
-            },
-        ]
-        return self.say(messages)
+        return self.say(build_show_pose_messages(pose))
 
     def load_pose(self, pose):
-        system_instruction = (
-            "You are a friendly yoga coach. Introduce the pose, briefly describing it while being encouraging. "
-            "Keep it to 2 sentences max with max sentence length of 15 words. "
-            "At the end say you will demonstrate the pose. "
-        )
-        messages = [
-            {"role": "system", "content": system_instruction},
-            {"role": "user", "content": f"Pose details: {str(pose['description'])}"},
-        ]
-        return self.say(messages)
+        return self.say(build_load_pose_messages(pose))
 
     def corrective_feedback(self, correction: dict, pose):
-        system_instruction = (
-            "You are a yoga coach. Receive the corrective feedback. You're inside of a discussion, no mention similar to 'during this pose'. "
-            "Keep it to 1 sentences max with max sentence length of 15 words. Be very concise, only useful words. "
-            "Don't mention the numbers. No asterisks, No parentheses. "
-            "Speak in the present tense and address the student directly without his name. Be creative. "
-        )
-        messages = [
-            {"role": "system", "content": system_instruction},
-            {"role": "system", "content": f"Pose details: {str(pose['description'])}"},
-            {"role": "user", "content": str(correction)},
-        ]
-        return self.say(messages, model="llama3.2")
+        messages = build_corrective_feedback_messages(correction, pose)
+        return self.say(messages, model=CORRECTIVE_FEEDBACK_MODEL)
 
     def end_pose_feedback(self, feedbacks):
         self.empty_queues()
         self.correction = None
         self.generated_text = ""
-        system_instruction = (
-            "You are a friendly yoga coach. Receive the analysis report. "
-            "Keep it to 2 sentences max with max sentence length of 20 words. "
-            "Highlight a weak points if needed and suggest one improvement tip but be encouraging and positive. "
-            "No numbers, no asterisks and no parentheses. "
-            "You can use metaphors if needed. "
-        )
-        messages = [
-            {"role": "system", "content": system_instruction},
-            {"role": "user", "content": f"Full feedback data: {str(feedbacks)}"},
-        ]
+        messages = build_end_pose_feedback_messages(feedbacks)
         print("\n[Main Thread] Adding end-of-pose feedback to queue...")
         return self.say(messages)
 
