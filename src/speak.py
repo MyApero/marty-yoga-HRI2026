@@ -39,15 +39,15 @@ class Speak:
         self,
         move_marty_callback,
         move_marty_enabled,
-        move_marty_correctiv,
+        move_marty_corrective,
         analyze_ongoing_frame,
         can_i_speak=lambda: True,
         audio_chunk_margin_seconds=AUDIO_CHUNK_MARGIN_S,
     ):
         self.move_marty_callback = move_marty_callback
         self.move_marty_enabled = move_marty_enabled
-        self.move_marty_type_correctiv = None
-        self.move_marty_correctiv = move_marty_correctiv
+        self.move_marty_type_corrective = None
+        self.move_marty_corrective = move_marty_corrective
         self.analyze_ongoing_frame = analyze_ongoing_frame
         self.can_i_speak = can_i_speak
 
@@ -249,7 +249,7 @@ class Speak:
                     self.subtitles = ""
                     self.current_sentence_keywords = set()
                     self.audio_queue.task_done()
-                    self.move_marty_type_correctiv = None
+                    self.move_marty_type_corrective = None
                     continue
 
             # --- Buffering & Playback ---
@@ -300,13 +300,14 @@ class Speak:
     def _play_chunk(self, stream, chunk):
         duration = len(chunk) / SAMPLE_RATE
         if self.move_marty_enabled:
-            if self.move_marty_callback and self.move_marty_type_correctiv is None:
+            if self.move_marty_callback and self.move_marty_type_corrective is None:
                 self.move_marty_callback(duration)
             elif (
-                self.move_marty_correctiv and self.move_marty_type_correctiv is not None
+                self.move_marty_corrective
+                and self.move_marty_type_corrective is not None
             ):
-                self.move_marty_correctiv()
-                self.move_marty_type_correctiv = None
+                self.move_marty_corrective()
+                self.move_marty_type_corrective = None
         stream.write(chunk)
 
     def _coordinator_worker(self):

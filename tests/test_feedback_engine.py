@@ -26,7 +26,10 @@ class TestFeedbackEngine(unittest.TestCase):
 
         self.assertIn("Right Knee target:90", correction)
         self.assertEqual(correction["Right Knee target:90"], "current:70")
-        self.assertEqual(self.engine.ongoing_mistakes["Right Knee"]["remider_done"], 1)
+        self.assertEqual(
+            self.engine.ongoing_mistakes["Right Knee"]["reminder_done"],
+            1,
+        )
 
     def test_closed_interval_is_not_reported_as_correction(self):
         actual_run = [self._frame(error=9.0)]

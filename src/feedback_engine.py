@@ -32,7 +32,7 @@ class FeedbackEngine:
                 self.ongoing_mistakes[angle_name] = {
                     "mistakes_repetitions": 0,
                     "timed_mistake": 0,
-                    "remider_done": 0,
+                    "reminder_done": 0,
                     "target_angle": angle_data["target_angle"],
                     "current_angle": angle_data["current_angle"],
                     "mistakes": [[elapsed]],
@@ -49,5 +49,5 @@ class FeedbackEngine:
                 correction_to_do[
                     angle_name + " target:" + str(round(mistakes["target_angle"]))
                 ] = "current:" + str(round(mistakes["current_angle"]))
-                mistakes["remider_done"] += 1
+                mistakes["reminder_done"] += 1
         return correction_to_do

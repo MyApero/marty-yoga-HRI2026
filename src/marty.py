@@ -38,7 +38,7 @@ class MyMarty(Marty):
         self.generated_text: callable = None
         self.queue = queue.Queue()
         self.NUMBER_LED = 12
-        self.step_legth = 75
+        self.step_length = 75
         threading.Thread(target=self.marty_worker, daemon=True).start()
         if not self.is_conn_ready():
             print("Marty is not connected!")
@@ -68,11 +68,11 @@ class MyMarty(Marty):
                 ):
                     joint, angle = type_move
                     if joint.__contains__("right"):
-                        self.walk(1, start_foot="right", step_length=self.step_legth)
+                        self.walk(1, start_foot="right", step_length=self.step_length)
                         self.move_joint("right twist", angle, duration, True)
                         self.move_joint("right twist", 0, duration, True)
                     else:
-                        self.walk(1, start_foot="left", step_length=self.step_legth)
+                        self.walk(1, start_foot="left", step_length=self.step_length)
                         self.move_joint("left twist", angle, duration, True)
                         self.move_joint("left twist", 0, duration, True)
                     self.stand_straight(3 * duration)
@@ -113,12 +113,12 @@ class MyMarty(Marty):
             self.interaction(key, value, value, False, duration)
 
     def interaction(
-        self, side, height_min, height_max, bloking: bool, duration: int | None = None
+        self, side, height_min, height_max, blocking: bool, duration: int | None = None
     ):
         height = random.randint(height_min, height_max)
         if duration is None:
             duration = abs(height) * 7
-        self.queue.put(({side: height}, duration, bloking))
+        self.queue.put(({side: height}, duration, blocking))
         return duration
 
     def interaction_eyebrows(self):

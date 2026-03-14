@@ -108,17 +108,17 @@ class HeadMaster:
             def move_marty_callback(chunk_duration):
                 self.marty.move_marty_randomly(chunk_duration)
 
-            def move_marty_callback_correctiv():
+            def move_marty_callback_corrective():
                 self.marty.move_marty_limb()
 
         else:
             move_marty_callback = None
-            move_marty_callback_correctiv = None
+            move_marty_callback_corrective = None
 
         return Speak(
             move_marty_callback,
             True,
-            move_marty_callback_correctiv,
+            move_marty_callback_corrective,
             self.analyze_ongoing_frame,
             can_i_speak=lambda: (
                 self.session.pose_ended or not self.session.is_pose_ending
@@ -141,7 +141,7 @@ class HeadMaster:
         if bool(correction):
             self.set_interaction_state(InteractionState.IN_POSE_CORRECTIVE_FEEDBACK)
             self.voice.correction = correction
-            self.voice.move_marty_type_correctiv = correction
+            self.voice.move_marty_type_corrective = correction
             self.voice.corrective_feedback(
                 correction, self.poses[self.session.pose_name]
             )
