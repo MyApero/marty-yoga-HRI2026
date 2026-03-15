@@ -307,7 +307,7 @@ class HeadMaster:
         self.set_interaction_state(InteractionState.IDLE)
         return self.voice.generated_text
 
-    def load_pose_image(self, pose_name, image_name="image.jpg"):
+    def load_pose_image(self, pose_name, image_name="original.png"):
         pose_path = os.path.join(POSES_FOLDER, pose_name, image_name)
         return load_pose_image_for_detection(pose_path, pose_name, image_name)
 

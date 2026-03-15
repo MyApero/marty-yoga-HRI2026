@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 
-def load_pose_image_for_detection(pose_path, pose_name, image_name="image.jpg"):
+def load_pose_image_for_detection(pose_path, pose_name, image_name="original.png"):
     """Load a pose asset and normalize RGBA inputs for reliable landmark detection."""
     try:
         image = cv2.imread(pose_path, cv2.IMREAD_UNCHANGED)
