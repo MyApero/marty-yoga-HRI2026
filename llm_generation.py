@@ -86,6 +86,35 @@ def parse_args() -> argparse.Namespace:
         help="Optional limit on number of poses to process.",
     )
     parser.add_argument(
+        "--pose-name",
+        default=None,
+        help="Filter jobs to a single pose name (e.g. chair).",
+    )
+    parser.add_argument(
+        "--single-job",
+        action="store_true",
+        help=(
+            "Run only one generation job after filters and repeat it --runs times. "
+            "Useful for prompt iteration."
+        ),
+    )
+    parser.add_argument(
+        "--single-output-file",
+        type=Path,
+        default=None,
+        help=(
+            "Write all generated rows to one CSV file instead of one file per prompt."
+        ),
+    )
+    parser.add_argument(
+        "--text-log-file",
+        type=Path,
+        default=None,
+        help=(
+            "Optional .log file with only generated text entries, separated by blank lines."
+        ),
+    )
+    parser.add_argument(
         "--append",
         action="store_true",
         help="Append to existing CSV files instead of overwriting.",
@@ -254,6 +283,17 @@ def write_rows(output_file: Path, rows: List[Dict[str, str]], append: bool) -> N
         writer.writerows(rows)
 
 
+def write_text_log(output_file: Path, rows: List[Dict[str, str]], append: bool) -> None:
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    mode = "a" if append else "w"
+
+    with output_file.open(mode, encoding="utf-8") as handle:
+        for row in rows:
+            text = row.get("response_text", "")
+            handle.write(text)
+            handle.write("\n\n\n")
+
+
 def main() -> int:
     args = parse_args()
 
@@ -269,14 +309,29 @@ def main() -> int:
         selected_prompts=selected_prompts,
     )
 
+    if args.pose_name:
+        jobs = [job for job in jobs if job["pose_name"] == args.pose_name]
+
+    if args.single_job:
+        if not jobs:
+            raise SystemExit(
+                "No generation jobs found for --single-job. Check --only-prompt and --pose-name."
+            )
+        jobs = [jobs[0]]
+        print(
+            "Single-job mode selected: "
+            f"{jobs[0]['prompt_name']} pose={jobs[0]['pose_name'] or '-'}"
+        )
+
     if not jobs:
         raise SystemExit(
-            "No generation jobs found. Check --poses-dir and --only-prompt."
+            "No generation jobs found. Check --poses-dir, --only-prompt, and --pose-name."
         )
 
     print(f"Generating {len(jobs)} prompt jobs x {args.runs} run(s)...")
 
     rows_by_prompt: Dict[str, List[Dict[str, str]]] = defaultdict(list)
+    generated_rows: List[Dict[str, str]] = []
 
     for run_index in range(1, args.runs + 1):
         for job_index, job in enumerate(jobs, start=1):
@@ -301,23 +356,35 @@ def main() -> int:
 
             elapsed_ms = (time.perf_counter() - started) * 1000.0
 
-            rows_by_prompt[job["prompt_name"]].append(
-                {
-                    "timestamp_utc": utc_now_iso(),
-                    "prompt_name": job["prompt_name"],
-                    "pose_name": job["pose_name"],
-                    "model": job["model"],
-                    "latency_ms": f"{elapsed_ms:.2f}",
-                    "messages_json": json.dumps(job["messages"], ensure_ascii=False),
-                    "response_text": response_text,
-                    "error": error,
-                }
-            )
+            row = {
+                "timestamp_utc": utc_now_iso(),
+                "prompt_name": job["prompt_name"],
+                "pose_name": job["pose_name"],
+                "model": job["model"],
+                "latency_ms": f"{elapsed_ms:.2f}",
+                "messages_json": json.dumps(job["messages"], ensure_ascii=False),
+                "response_text": response_text,
+                "error": error,
+            }
+            rows_by_prompt[job["prompt_name"]].append(row)
+            generated_rows.append(row)
 
-    for prompt_name, rows in rows_by_prompt.items():
-        output_file = args.output_dir / f"{prompt_name}.csv"
-        write_rows(output_file, rows, append=args.append)
-        print(f"Wrote {len(rows)} rows -> {output_file}")
+    if args.single_output_file is not None:
+        write_rows(args.single_output_file, generated_rows, append=args.append)
+        print(f"Wrote {len(generated_rows)} rows -> {args.single_output_file}")
+    else:
+        for prompt_name, rows in rows_by_prompt.items():
+            output_file = args.output_dir / f"{prompt_name}.csv"
+            write_rows(output_file, rows, append=args.append)
+            print(f"Wrote {len(rows)} rows -> {output_file}")
+
+    text_log_file = args.text_log_file
+    if text_log_file is None and args.single_output_file is not None:
+        text_log_file = args.single_output_file.with_suffix(".log")
+
+    if text_log_file is not None:
+        write_text_log(text_log_file, generated_rows, append=args.append)
+        print(f"Wrote {len(generated_rows)} text entries -> {text_log_file}")
 
     print("Done.")
     return 0

@@ -4,20 +4,15 @@ CORRECTIVE_FEEDBACK_MODEL = "llama3.2"
 
 INTRO_SYSTEM_PROMPT = (
     "You are a friendly yoga coach named Marty. Introduce yourself and greet the student warmly. "
-    "Keep it to max length of 25 words. No -, use more dots than commas. No questions."
-    "Make it sound like a natural conversation."
+    "Keep it to max length of 25 words. No -. No questions."
+    "We're at the HRI 2026 conference in Edinburgh"
+    "Creative and engaging introduction is appreciated. "
 )
 
 SHOW_POSE_SYSTEM_PROMPT = (
-    "You are a friendly yoga coach. Explain the pose. "
+    "You are a friendly yoga coach. Explain the pose without mentioning it."
     "Keep it simple in 2 sentences of 15 words"
-    "Make it like you were in a discution"
-)
-
-LOAD_POSE_SYSTEM_PROMPT = (
-    "You are a friendly yoga coach. Introduce the pose, briefly describing it while being encouraging. "
-    "Keep it to 2 sentences max with max sentence length of 15 words. "
-    "At the end say you will demonstrate the pose. "
+    "No :"
 )
 
 CORRECTIVE_FEEDBACK_SYSTEM_PROMPT = (
@@ -56,10 +51,18 @@ def build_show_pose_messages(pose):
     ]
 
 
+LOAD_POSE_SYSTEM_PROMPT = (
+    "You are a friendly yoga coach. Introduce the pose, briefly describing it while being encouraging. "
+    "Do not greet"
+    "Keep it to 2 sentences max with max sentence length of 15 words. "
+    "At the end say you will demonstrate the pose. "
+)
+
+
 def build_load_pose_messages(pose):
     return [
         {"role": "system", "content": LOAD_POSE_SYSTEM_PROMPT},
-        {"role": "user", "content": f"Pose details: {str(pose['description'])}"},
+        {"role": "user", "content": f"Pose details: {str(pose['description']['context'])}"},
     ]
 
 
