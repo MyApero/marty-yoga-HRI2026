@@ -1,14 +1,9 @@
 yoga_name = "Virabhadrasana II"
 
 [description]
-context = "Warrior 2 on the left side mirrors the benefits of the right, balancing the body's strength and flexibility. It focuses on strengthening the left leg and opening the left side of the pelvic girdle, ensuring symmetrical muscle development."
-howto = """Warrior 2 Pose:
-1. From a wide-legged stance, turn your left foot out 90 degrees to point to the top of the mat. Turn your right foot slightly inward.
-2. Align your left heel with the arch of your right foot.
-3. Exhale and bend your left knee deeply until it is stacked directly over your left ankle, forming a right angle.
-4. Press firmly through the outer edge of your right (back) foot to keep the back leg engaged and straight.
-5. Extend your arms out to the sides at shoulder height, reaching through the fingertips.
-6. Turn your head to look past your left fingers, keeping the torso long and centered between the legs."""
+context = "Warrior 2 is a powerful standing pose that increases stamina and strengthens the legs and ankles. It opens the hips and chest while stimulating abdominal organs. On the left side, it specifically targets the opening of the left hip and strengthening of the left quadricep."
+howto = "From a standing position, the legs are separated into a wide stance. The left knee is bent in a 90-degree angle directly above the ankle. The right leg is extended and straight with the outside edge of the back foot gripping the earth in a 60-degree angle toward the front. The inner thighs are externally rotated away from each other. The pelvis is tucked. The ribcage is lifted. The arms are extended out to the sides and are aligned with the shoulders in a straight line with the fingers reaching out as the shoulder blades squeeze together. The gaze is toward the front fingers."
+
 
 [pose]
 "Right Wrist" = 176.21
