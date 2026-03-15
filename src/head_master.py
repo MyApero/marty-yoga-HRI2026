@@ -17,6 +17,7 @@ from src.session_state import SessionState
 from src.marty import MyMarty
 from src.camera import capture_image_from_camera
 from src.window import WindowRenderer
+from src.pose_image_loader import load_pose_image_for_detection
 from enum import Enum
 
 # Initial Setup
@@ -308,14 +309,7 @@ class HeadMaster:
 
     def load_pose_image(self, pose_name, image_name="image.jpg"):
         pose_path = os.path.join(POSES_FOLDER, pose_name, image_name)
-        try:
-            image = cv2.imread(pose_path)
-        except Exception as e:
-            print(f"Error loading pose image: {e}")
-            image = None
-        if image is None:
-            print(f"Could not read image at {pose_path}")
-        return image
+        return load_pose_image_for_detection(pose_path, pose_name, image_name)
 
     def generate_yoga_images_with_landmarks(
         self,
@@ -327,8 +321,20 @@ class HeadMaster:
             self.session.pose_name = pose_name
             self.session.name_files = f"pose_{pose_name}_{int(time.time())}"
             image_bgr = self.load_pose_image(pose_name)
+            if image_bgr is None:
+                continue
             image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
+
+            # Helpful diagnostics for generation mode.
+            result = self.analyze_image(mp_image)
+            if not result.pose_landmarks and verbose:
+                print(
+                    f"Warning: no landmarks detected for pose '{pose_name}'. "
+                    "This input image may be too stylized or mask-like.",
+                    file=sys.stderr,
+                )
+
             frame = self.process_image(mp_image, show_landmarks=True)
             output_filename = f"output_{pose_name}.jpg"
             cv2.imwrite(output_filename, frame)
