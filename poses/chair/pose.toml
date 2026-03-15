@@ -1,14 +1,8 @@
 yoga_name = "Utkatasana"
 
 [description]
-context = "The Chair Pose is a strengthening and heat-building asana that brings all parts of your body together into a cohesive and powerful whole. A deep squat, this pose immediately engages the strength of your legs, back, and ankles. It helps to build endurance and grounding."
-howto = """Chair Pose:
-1. Stand in Chair Pose with big toes touching and heels slightly apart.
-2. Raise your arms overhead so that your biceps are just slightly in front of your ears. Keep your arms parallel, palms facing inward.
-3. Bend your knees, sitting your hips back and down as if sitting into an imaginary chair.
-4. Shift your weight into your heels so you can lift your toes slightly.
-5. Keep your lower back long (avoid overarching) by drawing your lower belly in and up.
-6. Hold the pose, keeping the chest lifted and thighs parallel to the floor if possible."""
+context = "Chair Pose looks simple but is actually a tough, full-body exercise that builds strength and heat. It challenges both the body and mind, and teaches one key lesson: regular, consistent practice over time delivers far better results than occasional intense effort."
+howto = """From a standing position, the feet are together and rooted into the earth with toes actively lifted. The knees are bent and the weight of the body is on the heels of the feet. The pelvis is tucked in and the ribcage is lifted. The neck is a natural extension of the spine. The arms are lifted up toward the sky with the elbows straight and the biceps by the ears. The hands can be together or separated and facing each other with the fingers spread wide. The gaze is forward."""
 
 # """
 # Exhale and bend your knees so that your thighs are as parallel to the floor as possible. Your knees will project out over your feet, and your trunk will lean slightly forward over your thighs until your front torso forms approximately a right angle with the tops of your thighs.
