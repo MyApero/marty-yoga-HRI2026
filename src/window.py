@@ -1,5 +1,6 @@
 import logging
 import cv2
+import time
 
 from src.mediapipe_operations import apply_film_effect
 from src.video_feedback import draw_skeleton
@@ -10,6 +11,12 @@ class WindowRenderer:
         self.config = config
         self.voice = voice
         self.logger = logger
+        self.last_frame_timings = {
+            "filter_ms": 0.0,
+            "detect_ms": 0.0,
+            "resize_ms": 0.0,
+            "render_ms": 0.0,
+        }
 
     def show(self, frame):
         cv2.imshow("Video Feedback", frame)
@@ -30,11 +37,19 @@ class WindowRenderer:
         marty=None,
         analyze_image=None,
     ):
+        frame_start = time.perf_counter()
+
+        filter_start = time.perf_counter()
         output_frame = self.filter_image(image)
+        filter_ms = (time.perf_counter() - filter_start) * 1000.0
+
         frame_angles = None
+        detect_ms = 0.0
 
         if show_landmarks and analyze_image and pose_data is not None:
+            detect_start = time.perf_counter()
             result = analyze_image(image)
+            detect_ms = (time.perf_counter() - detect_start) * 1000.0
             if result.pose_landmarks:
                 frame_angles = draw_skeleton(
                     output_frame,
@@ -62,9 +77,20 @@ class WindowRenderer:
             interaction_state_text,
         )
 
+        resize_start = time.perf_counter()
         frame = cv2.resize(
             output_frame, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC
         )
+
+        resize_ms = (time.perf_counter() - resize_start) * 1000.0
+        render_ms = (time.perf_counter() - frame_start) * 1000.0
+        self.last_frame_timings = {
+            "filter_ms": filter_ms,
+            "detect_ms": detect_ms,
+            "resize_ms": resize_ms,
+            "render_ms": render_ms,
+        }
+
         return frame, frame_angles
 
     def draw_overlays(

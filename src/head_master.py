@@ -60,7 +60,7 @@ class HeadMaster:
 
         self.config = load_toml(CONFIG_FILE)
         self.current_config = current_config
-        self.camera = self.init_camera(self.current_config["camera"])
+        self.camera = self.init_camera(self.current_config)
         self.marty = self.init_marty() if enable_marty else None
         self.session = SessionState()
         self.interaction_state = InteractionState.IDLE
@@ -87,6 +87,12 @@ class HeadMaster:
         self.ongoing_mistakes = self.feedback_engine.ongoing_mistakes
         self._cleaned_up = False
 
+        perf_config = self.config.get("performance", {})
+        self.show_perf_overlay = perf_config.get("show_perf_overlay", True)
+        self.fps_smoothing = perf_config.get("fps_smoothing", 0.2)
+        self.smoothed_fps = None
+        self.last_show_ms = 0.0
+
     def set_interaction_state(self, new_state):
         if self.interaction_state == new_state:
             return
@@ -97,8 +103,28 @@ class HeadMaster:
         )
         self.interaction_state = new_state
 
-    def init_camera(self, camera_index=0):
-        return cv2.VideoCapture(camera_index)
+    def init_camera(self, camera_config=None):
+        if isinstance(camera_config, dict):
+            camera_index = camera_config.get("camera", 0)
+            camera_width = camera_config.get("camera_width")
+            camera_height = camera_config.get("camera_height")
+            camera_fps = camera_config.get("camera_fps")
+        else:
+            camera_index = 0 if camera_config is None else camera_config
+            camera_width = None
+            camera_height = None
+            camera_fps = None
+
+        camera = cv2.VideoCapture(camera_index)
+
+        if camera_width:
+            camera.set(cv2.CAP_PROP_FRAME_WIDTH, int(camera_width))
+        if camera_height:
+            camera.set(cv2.CAP_PROP_FRAME_HEIGHT, int(camera_height))
+        if camera_fps:
+            camera.set(cv2.CAP_PROP_FPS, float(camera_fps))
+
+        return camera
 
     def init_marty(self):
         try:
@@ -165,17 +191,79 @@ class HeadMaster:
             self.update_correction_feedback()
 
     def process_camera_image(self, show_landmarks=False, timer_text="", elapsed=0.0):
+        frame_start = time.perf_counter()
+
+        capture_start = time.perf_counter()
         camera_image = capture_image_from_camera(self.camera)
+        capture_ms = (time.perf_counter() - capture_start) * 1000.0
+
         frame = self.process_image(camera_image, show_landmarks, timer_text, elapsed)
+
+        total_pre_show_ms = (time.perf_counter() - frame_start) * 1000.0
+        if self.show_perf_overlay:
+            renderer_timings = self.window_renderer.last_frame_timings
+            total_ms = total_pre_show_ms + self.last_show_ms
+            inst_fps = 1000.0 / total_ms if total_ms > 0 else 0.0
+            if self.smoothed_fps is None:
+                self.smoothed_fps = inst_fps
+            else:
+                alpha = max(0.01, min(1.0, float(self.fps_smoothing)))
+                self.smoothed_fps = alpha * inst_fps + (1.0 - alpha) * self.smoothed_fps
+
+            debug_lines = [
+                f"FPS: {self.smoothed_fps:.1f}",
+                f"Total: {total_ms:.1f} ms",
+                f"Capture: {capture_ms:.1f} ms",
+                f"Filter: {renderer_timings.get('filter_ms', 0.0):.1f} ms",
+                f"Detect: {renderer_timings.get('detect_ms', 0.0):.1f} ms",
+                f"Resize: {renderer_timings.get('resize_ms', 0.0):.1f} ms",
+                f"Render: {renderer_timings.get('render_ms', 0.0):.1f} ms",
+                f"Show(prev): {self.last_show_ms:.1f} ms",
+            ]
+            self._draw_perf_overlay(frame, debug_lines)
+
+        show_start = time.perf_counter()
         self.window_renderer.show(frame)
+        self.last_show_ms = (time.perf_counter() - show_start) * 1000.0
         self.session.name_files = None
 
-    def process_image(self, image, show_landmarks=False, timer_text="", elapsed=0.0, show_state=False):
+    def _draw_perf_overlay(self, frame, lines):
+        if not lines:
+            return
+
+        margin = 10
+        line_height = 20
+        box_width = 280
+        box_height = line_height * len(lines) + 12
+
+        top_left = (frame.shape[1] - box_width - margin, margin)
+        bottom_right = (frame.shape[1] - margin, margin + box_height)
+        cv2.rectangle(frame, top_left, bottom_right, (0, 0, 0), -1)
+
+        y = margin + 20
+        x = frame.shape[1] - box_width
+        for line in lines:
+            cv2.putText(
+                frame,
+                line,
+                (x, y),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (255, 255, 255),
+                1,
+            )
+            y += line_height
+
+    def process_image(
+        self, image, show_landmarks=False, timer_text="", elapsed=0.0, show_state=False
+    ):
         pose_data = (
             self.poses.get(self.session.pose_name) if self.session.pose_name else None
         )
         if show_state:
-            interaction_state_text = self.interaction_state.name.replace("_", " ").title()
+            interaction_state_text = self.interaction_state.name.replace(
+                "_", " "
+            ).title()
         else:
             interaction_state_text = None
         frame, frame_angles = self.window_renderer.process_image(

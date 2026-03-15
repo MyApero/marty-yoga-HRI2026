@@ -1,4 +1,4 @@
-model_path = "pose_landmarker_full.task"
+model_path = "pose_landmarker_heavy.task"
 
 [config_common]
 marty = "bluetooth://Marty-Yoga"
@@ -7,6 +7,9 @@ camera = 0
 [config_macos]
 marty = "usb:///dev/tty.usbserial-10"
 camera = 0
+camera_width = 1280
+camera_height = 720
+camera_fps = 30
 
 [config_linux]
 marty = "usb:///dev/ttyUSB0"
@@ -19,6 +22,10 @@ brightness = -20
 grain_intensity = 20
 line_thickness = 5
 head_radius_multiplier = 0.6
+
+[performance]
+show_perf_overlay = true
+fps_smoothing = 0.2
 
 [colors]
 skeleton_color = [255, 255, 255]
