@@ -110,8 +110,10 @@ class WindowRenderer:
                 (0, 0, 0),
                 -1,
             )
+            # Remove "
+            subtitles_cleaned = subtitles.replace('"', "")
             # Show only last 18 words
-            showed_text = " ".join(subtitles.split()[-18:])
+            showed_text = " ".join(subtitles_cleaned.split()[-18:])
             cv2.putText(
                 frame,
                 showed_text,
