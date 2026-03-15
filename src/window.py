@@ -75,7 +75,8 @@ class WindowRenderer:
         pose_ended,
         interaction_state_text=None,
     ):
-        if self.voice.subtitles:
+        subtitles = self.voice.subtitles if self.voice else ""
+        if subtitles:
             cv2.rectangle(
                 frame,
                 (5, frame.shape[0] - 40),
@@ -84,7 +85,7 @@ class WindowRenderer:
                 -1,
             )
             # Show only last 18 words
-            showed_text = " ".join(self.voice.subtitles.split()[-18:])
+            showed_text = " ".join(subtitles.split()[-18:])
             cv2.putText(
                 frame,
                 showed_text,
@@ -133,6 +134,9 @@ class WindowRenderer:
             )
 
         if self.logger.isEnabledFor(logging.DEBUG):
+            text_queue_size = self.voice.text_queue.qsize() if self.voice else 0
+            audio_queue_size = self.voice.audio_queue.qsize() if self.voice else 0
+            request_queue_size = self.voice.request_queue.qsize() if self.voice else 0
             cv2.rectangle(
                 frame,
                 (5, 5),
@@ -142,7 +146,7 @@ class WindowRenderer:
             )
             cv2.putText(
                 frame,
-                f"Voice Queue: {self.voice.text_queue.qsize()}, Audio Queue: {self.voice.audio_queue.qsize()}, request Queue: {self.voice.request_queue.qsize()}",
+                f"Voice Queue: {text_queue_size}, Audio Queue: {audio_queue_size}, request Queue: {request_queue_size}",
                 (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,

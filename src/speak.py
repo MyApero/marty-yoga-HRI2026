@@ -32,6 +32,7 @@ AUDIO_CHUNK_MARGIN_S = 6.0
 COUNTDOWN_FILE_PATH = "assets/countdown.wav"
 COUNTDOWN_SUBTITLES = "Get ready. 3... 2... 1... Hold!"
 MAX_MEMORY_MESSAGES = 10
+KOKORO_REPO_ID = "hexgrad/Kokoro-82M"
 
 
 class Speak:
@@ -74,7 +75,7 @@ class Speak:
 
         # Load Models
         try:
-            self.kokoro = Kokoro(lang_code="b")
+            self.kokoro = Kokoro(lang_code="b", repo_id=KOKORO_REPO_ID)
             print("Kokoro loaded successfully.", file=sys.stderr)
         except Exception as e:
             print(f"Failed to load Kokoro: {e}", file=sys.stderr)

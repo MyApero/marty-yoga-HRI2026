@@ -15,7 +15,6 @@ from src.feedback_preprocess import get_feedbacks_from_run
 from src.feedback_engine import FeedbackEngine
 from src.session_state import SessionState
 from src.marty import MyMarty
-from src.speak import Speak
 from src.camera import capture_image_from_camera
 from src.window import WindowRenderer
 from enum import Enum
@@ -48,7 +47,12 @@ class InteractionState(Enum):
 
 class HeadMaster:
     def __init__(
-        self, current_config, pose_duration=POSE_DURATION_S, logging_level=logging.INFO
+        self,
+        current_config,
+        pose_duration=POSE_DURATION_S,
+        logging_level=logging.INFO,
+        enable_marty=True,
+        enable_voice=True,
     ):
         self.logger = logging.getLogger(__name__)
         logging.basicConfig(level=logging_level)
@@ -56,10 +60,10 @@ class HeadMaster:
         self.config = load_toml(CONFIG_FILE)
         self.current_config = current_config
         self.camera = self.init_camera(self.current_config["camera"])
-        self.marty = self.init_marty()
+        self.marty = self.init_marty() if enable_marty else None
         self.session = SessionState()
         self.interaction_state = InteractionState.IDLE
-        self.voice = self.init_voice()
+        self.voice = self.init_voice(enable_voice=enable_voice)
         self.window_renderer = WindowRenderer(self.config, self.voice, self.logger)
         if self.marty:
             self.marty.init_generated_text(self.voice.generated_text_callback)
@@ -103,7 +107,12 @@ class HeadMaster:
             print(f"Failed to initialize Marty: {e}", file=sys.stderr)
             return None
 
-    def init_voice(self):
+    def init_voice(self, enable_voice=True):
+        if not enable_voice:
+            return None
+
+        from src.speak import Speak
+
         if self.marty:
 
             def move_marty_callback(chunk_duration):
@@ -297,7 +306,7 @@ class HeadMaster:
         self.set_interaction_state(InteractionState.IDLE)
         return self.voice.generated_text
 
-    def load_pose_image(self, pose_name, image_name="original.png"):
+    def load_pose_image(self, pose_name, image_name="image.jpg"):
         pose_path = os.path.join(POSES_FOLDER, pose_name, image_name)
         try:
             image = cv2.imread(pose_path)
@@ -308,16 +317,25 @@ class HeadMaster:
             print(f"Could not read image at {pose_path}")
         return image
 
-    def generate_yoga_images_with_landmarks(self):
-        for pose_name in ["chair", "left_warrior2"]:
+    def generate_yoga_images_with_landmarks(
+        self,
+        poses=["chair", "left_warrior2", "mountain", "right_warrior2"],
+        verbose=True,
+    ):
+        saved_files = []
+        for pose_name in poses:
             self.session.pose_name = pose_name
             self.session.name_files = f"pose_{pose_name}_{int(time.time())}"
             image_bgr = self.load_pose_image(pose_name)
             image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
             frame = self.process_image(mp_image, show_landmarks=True)
-            cv2.imwrite(f"output_{pose_name}.jpg", frame)
-            print(f"Saved output_{pose_name}.jpg")
+            output_filename = f"output_{pose_name}.jpg"
+            cv2.imwrite(output_filename, frame)
+            saved_files.append(output_filename)
+            if verbose:
+                print(f"Saved {output_filename}")
+        return saved_files
 
     def run_demo(self, poses=None):
         if poses is None:
