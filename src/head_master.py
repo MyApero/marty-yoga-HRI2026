@@ -23,7 +23,7 @@ from enum import Enum
 # Initial Setup
 CONFIG_FILE = "config.toml"
 POSES_FOLDER = "poses/"
-POSES_LIST = ["right_warrior2", "left_warrior2", "chair", "mountain"]
+POSES_LIST = ["chair", "crescent_moon", "left_warrior1", "left_warrior2", "mountain"]
 
 MARGIN_BEFORE_CORRECTION_FEEDBACK_S = 5
 TIME_GENERATION_END_FEEDBACK_S = 12.0
@@ -170,11 +170,14 @@ class HeadMaster:
         self.window_renderer.show(frame)
         self.session.name_files = None
 
-    def process_image(self, image, show_landmarks=False, timer_text="", elapsed=0.0):
+    def process_image(self, image, show_landmarks=False, timer_text="", elapsed=0.0, show_state=False):
         pose_data = (
             self.poses.get(self.session.pose_name) if self.session.pose_name else None
         )
-        interaction_state_text = self.interaction_state.name.replace("_", " ").title()
+        if show_state:
+            interaction_state_text = self.interaction_state.name.replace("_", " ").title()
+        else:
+            interaction_state_text = None
         frame, frame_angles = self.window_renderer.process_image(
             image,
             show_landmarks=show_landmarks,

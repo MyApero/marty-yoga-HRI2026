@@ -1,0 +1,35 @@
+[description]
+context = "The left-side Crescent Lunge challenges balance and stability while engaging the stabilizing muscles of the left leg. It provides a deep stretch to the right psoas and hip flexor while building endurance in the quadriceps and calves."
+howto = """1. Begin in Tadasana or Downward-Facing Dog.
+2. Step your left foot forward between your hands, stacking the left knee directly over the left ankle.
+3. Engage the right (back) leg by pressing the back of the right thigh up toward the sky. Keep the right heel lifted high off the mat.
+4. Inhale to lift the torso and extend arms toward the ceiling, keeping ribs drawn in slightly to avoid splaying.
+5. Sink deeper into the front lunge while maintaining the lift in the back leg.
+6. Fix your gaze straight ahead or slightly upward to help maintain balance."""
+
+[pose]
+"Right Wrist" = 162.61
+"Left Wrist" = 163.26
+"Right Elbow" = 174.8
+"Left Elbow" = 164.26
+"Right Shoulder" = 107.1
+"Left Shoulder" = 62.47
+"Right Knee" = 104.75
+"Left Knee" = 165.31
+"Right Hip" = 96.25
+"Left Hip" = 138.44
+Spine = 142.79
+"Spine Alignment" = 179.55
+"Right Ankle" = 121.02
+"Left Ankle" = 95.1
+
+[marty]
+LeftHip = 49
+LeftTwist = 1
+LeftKnee = 11
+RightHip = -53
+RightTwist = 1
+RightKnee = -8
+LeftArm = 143
+RightArm = 151
+Eyes = 0

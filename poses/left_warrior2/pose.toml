@@ -11,20 +11,20 @@ howto = """Warrior 2 Pose:
 6. Turn your head to look past your left fingers, keeping the torso long and centered between the legs."""
 
 [pose]
-"Right Wrist" = 165.89
-"Left Wrist" = 172.81
-"Right Elbow" = 175.12
-"Left Elbow" = 173.43
-"Right Shoulder" = 98.28
-"Left Shoulder" = 85.21
-"Right Knee" = 92.17
-"Left Knee" = 168.04
-"Right Hip" = 82.64
-"Left Hip" = 128.18
-Spine = 140.69
-"Spine Alignment" = 169.5
-"Right Ankle" = 116.52
-"Left Ankle" = 175.13
+"Right Wrist" = 176.21
+"Left Wrist" = 173.47
+"Right Elbow" = 174.19
+"Left Elbow" = 179.37
+"Right Shoulder" = 93.66
+"Left Shoulder" = 95.43
+"Right Knee" = 100.17
+"Left Knee" = 170.25
+"Right Hip" = 89.67
+"Left Hip" = 121.19
+Spine = 149.62
+"Spine Alignment" = 167.69
+"Right Ankle" = 122.08
+"Left Ankle" = 96.52
 
 [marty]
 LeftHip = -24

@@ -1,0 +1,35 @@
+[description]
+context = "Crescent Lunge (High Lunge) is a dynamic standing pose that builds heat and balance. Unlike the low lunge, the back knee is lifted, which actively strengthens the legs, glutes, and core while stretching the hip flexors. Performing it on the right side opens the left hip flexor and strengthens the right thigh."
+howto = """1. Begin in Tadasana (Mountain Pose) or Downward-Facing Dog.
+2. Step your right foot forward between your hands, aligning the right knee directly over the right ankle.
+3. Keep your left (back) leg strong and straight. Lift the left heel high so it is stacked over the toes, and lift the back of the left knee toward the ceiling.
+4. Inhale and sweep your arms overhead, palms facing each other. Lift your torso upright.
+5. Square your hips to the front of the mat, drawing the right hip back and the left hip forward.
+6. Lengthen the tailbone down and reach the fingertips up, keeping the shoulders relaxed."""
+
+[pose]
+"Right Wrist" = 150.64
+"Left Wrist" = 158.07
+"Right Elbow" = 168.27
+"Left Elbow" = 167.64
+"Right Shoulder" = 126.44
+"Left Shoulder" = 65.3
+"Right Knee" = 178.49
+"Left Knee" = 178.89
+"Right Hip" = 65.85
+"Left Hip" = 110.73
+Spine = 65.85
+"Spine Alignment" = 178.5
+"Right Ankle" = 110.67
+"Left Ankle" = 106.96
+
+[marty]
+LeftHip = -53
+LeftTwist = 5
+LeftKnee = 1
+RightHip = 54
+RightTwist = 5
+RightKnee = 7
+LeftArm = 144
+RightArm = 151
+Eyes = 1
