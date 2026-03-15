@@ -36,7 +36,7 @@ def run_generation(master, gen_poses):
         print(f"Saved {output_filename}")
 
 
-def run_interactive(master):
+def run_interactive(master: HeadMaster):
     while True:
         key = cv2.waitKey(1) & 0xFF
         if not master.tick(key):

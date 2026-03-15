@@ -19,7 +19,6 @@ camera = 0
 [film_settings]
 contrast = 1.2
 brightness = -20
-grain_intensity = 20
 line_thickness = 5
 head_radius_multiplier = 0.6
 
@@ -33,40 +32,239 @@ joint_dot_size = 2
 
 [skeleton]
 joint_connections = [
-    { name = "Right Hand", angles = ["Right Wrist"], joint = [15, 19] },
-    { name = "Left Hand", angles = ["Left Wrist"], joint = [16, 20] },
-    { name = "Right Forearm", angles = ["Right Elbow", "Right Wrist"], joint = [13, 15] },
-    { name = "Left Forearm", angles = ["Left Elbow", "Left Wrist"], joint = [14, 16] },
-    { name = "Right UppeRight Arm", angles = ["Right Elbow", "Right Shoulder"], joint = [11, 13] },
-    { name = "Left UppeRight Arm", angles = ["Left Elbow", "Left Shoulder"], joint = [12, 14] },
-    { name = "Right LoweRight leg", angles = ["Right Knee", "Right Ankle"], joint = [25, 27] },
-    { name = "Left LoweRight leg", angles = ["Left Knee", "Left Ankle"], joint = [26, 28] },
-    { name = "Right Leg", angles = ["Right Knee", "Right Hip"], joint = [23, 25] },
-    { name = "Left Leg", angles = ["Left Knee", "Left Hip"], joint = [24, 26] },
-    { name = "Hips", angles = ["Right Hip", "Left Hip"], joint = [23, 24] },
-    { name = "Shoulders", angles = ["Right Shoulder", "Left Shoulder"], joint = [11, 12] },
-    { name = "Neck", angles = ["Spine Alignment"], joint = [999, 998] },
-    { name = "Spine", angles = ["Spine"], joint = [998, 997] },
-    { name = "Right Foot", angles = ["Right Ankle"], joint = [27, 31] },
-    { name = "Left Foot", angles = ["Left Ankle"], joint = [28, 32] },
+    { name = "Right Hand", angles = [
+        "Right Wrist",
+    ], joint = [
+        15,
+        19,
+    ] },
+    { name = "Left Hand", angles = [
+        "Left Wrist",
+    ], joint = [
+        16,
+        20,
+    ] },
+    { name = "Right Forearm", angles = [
+        "Right Elbow",
+        "Right Wrist",
+    ], joint = [
+        13,
+        15,
+    ] },
+    { name = "Left Forearm", angles = [
+        "Left Elbow",
+        "Left Wrist",
+    ], joint = [
+        14,
+        16,
+    ] },
+    { name = "Right UppeRight Arm", angles = [
+        "Right Elbow",
+        "Right Shoulder",
+    ], joint = [
+        11,
+        13,
+    ] },
+    { name = "Left UppeRight Arm", angles = [
+        "Left Elbow",
+        "Left Shoulder",
+    ], joint = [
+        12,
+        14,
+    ] },
+    { name = "Right LoweRight leg", angles = [
+        "Right Knee",
+        "Right Ankle",
+    ], joint = [
+        25,
+        27,
+    ] },
+    { name = "Left LoweRight leg", angles = [
+        "Left Knee",
+        "Left Ankle",
+    ], joint = [
+        26,
+        28,
+    ] },
+    { name = "Right Leg", angles = [
+        "Right Knee",
+        "Right Hip",
+    ], joint = [
+        23,
+        25,
+    ] },
+    { name = "Left Leg", angles = [
+        "Left Knee",
+        "Left Hip",
+    ], joint = [
+        24,
+        26,
+    ] },
+    { name = "Hips", angles = [
+        "Right Hip",
+        "Left Hip",
+    ], joint = [
+        23,
+        24,
+    ] },
+    { name = "Shoulders", angles = [
+        "Right Shoulder",
+        "Left Shoulder",
+    ], joint = [
+        11,
+        12,
+    ] },
+    { name = "Neck", angles = [
+        "Spine Alignment",
+    ], joint = [
+        999,
+        998,
+    ] },
+    { name = "Spine", angles = [
+        "Spine",
+    ], joint = [
+        998,
+        997,
+    ] },
+    { name = "Right Foot", angles = [
+        "Right Ankle",
+    ], joint = [
+        27,
+        31,
+    ] },
+    { name = "Left Foot", angles = [
+        "Left Ankle",
+    ], joint = [
+        28,
+        32,
+    ] },
 ]
 
 [feedback]
 angles = [
-    { name = "Right Wrist", points = [[13, 15, 19]]},
-    { name = "Left Wrist", points = [[14, 16, 20]]},
-    { name = "Right Elbow", points = [[11, 13, 15]] },
-    { name = "Left Elbow", points = [[12, 14, 16]] },
-    { name = "Right Shoulder", points = [[13, 11, 12], [13, 11, 23]] },
-    { name = "Left Shoulder", points = [[14, 12, 11], [14, 12, 24]] },
-    { name = "Right Knee",  points = [[23, 25, 27]] },
-    { name = "Left Knee",  points = [[24, 26, 28]] },
-    { name = "Right Hip", points = [[25, 23, 24], [11, 23, 25]] },
-    { name = "Left Hip", points = [[26, 24, 23], [12, 24, 26]] },
-    { name = "Spine", points = [[26, 24, 23], [25, 23, 24]] },
-    { name = "Spine Alignment", points = [[999, 998, 997]] },
-    { name = "Right Ankle", points = [[25, 27, 31]] },
-    { name = "Left Ankle", points = [[26, 28, 32]] },
+    { name = "Right Wrist", points = [
+        [
+            13,
+            15,
+            19,
+        ],
+    ] },
+    { name = "Left Wrist", points = [
+        [
+            14,
+            16,
+            20,
+        ],
+    ] },
+    { name = "Right Elbow", points = [
+        [
+            11,
+            13,
+            15,
+        ],
+    ] },
+    { name = "Left Elbow", points = [
+        [
+            12,
+            14,
+            16,
+        ],
+    ] },
+    { name = "Right Shoulder", points = [
+        [
+            13,
+            11,
+            12,
+        ],
+        [
+            13,
+            11,
+            23,
+        ],
+    ] },
+    { name = "Left Shoulder", points = [
+        [
+            14,
+            12,
+            11,
+        ],
+        [
+            14,
+            12,
+            24,
+        ],
+    ] },
+    { name = "Right Knee", points = [
+        [
+            23,
+            25,
+            27,
+        ],
+    ] },
+    { name = "Left Knee", points = [
+        [
+            24,
+            26,
+            28,
+        ],
+    ] },
+    { name = "Right Hip", points = [
+        [
+            25,
+            23,
+            24,
+        ],
+        [
+            11,
+            23,
+            25,
+        ],
+    ] },
+    { name = "Left Hip", points = [
+        [
+            26,
+            24,
+            23,
+        ],
+        [
+            12,
+            24,
+            26,
+        ],
+    ] },
+    { name = "Spine", points = [
+        [
+            26,
+            24,
+            23,
+        ],
+        [
+            25,
+            23,
+            24,
+        ],
+    ] },
+    { name = "Spine Alignment", points = [
+        [
+            999,
+            998,
+            997,
+        ],
+    ] },
+    { name = "Right Ankle", points = [
+        [
+            25,
+            27,
+            31,
+        ],
+    ] },
+    { name = "Left Ankle", points = [
+        [
+            26,
+            28,
+            32,
+        ],
+    ] },
 ]
 
 show_labels = true
