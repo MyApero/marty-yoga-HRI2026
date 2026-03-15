@@ -95,15 +95,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help=(
             "Run only one generation job after filters and repeat it --runs times. "
-            "Useful for prompt iteration."
-        ),
-    )
-    parser.add_argument(
-        "--single-output-file",
-        type=Path,
-        default=None,
-        help=(
-            "Write all generated rows to one CSV file instead of one file per prompt."
+            "Useful for prompt iteration. Also writes to a single auto-named CSV file."
         ),
     )
     parser.add_argument(
@@ -294,6 +286,31 @@ def write_text_log(output_file: Path, rows: List[Dict[str, str]], append: bool) 
             handle.write("\n\n\n")
 
 
+def sanitize_filename_part(value: str) -> str:
+    cleaned = []
+    for ch in value.strip().lower():
+        if ch.isalnum() or ch in {"-", "_"}:
+            cleaned.append(ch)
+        else:
+            cleaned.append("-")
+    return "".join(cleaned).strip("-") or "unknown"
+
+
+def build_single_output_path(args: argparse.Namespace) -> Path:
+    if args.only_prompt:
+        prompt_part = sanitize_filename_part("-".join(args.only_prompt))
+    else:
+        prompt_part = "all-prompts"
+
+    if args.pose_name:
+        pose_part = sanitize_filename_part(args.pose_name)
+        filename = f"{prompt_part}_{pose_part}_debug.csv"
+    else:
+        filename = f"{prompt_part}_debug.csv"
+
+    return args.output_dir / filename
+
+
 def main() -> int:
     args = parse_args()
 
@@ -369,9 +386,11 @@ def main() -> int:
             rows_by_prompt[job["prompt_name"]].append(row)
             generated_rows.append(row)
 
-    if args.single_output_file is not None:
-        write_rows(args.single_output_file, generated_rows, append=args.append)
-        print(f"Wrote {len(generated_rows)} rows -> {args.single_output_file}")
+    single_output_path: Path | None = None
+    if args.single_job:
+        single_output_path = build_single_output_path(args)
+        write_rows(single_output_path, generated_rows, append=args.append)
+        print(f"Wrote {len(generated_rows)} rows -> {single_output_path}")
     else:
         for prompt_name, rows in rows_by_prompt.items():
             output_file = args.output_dir / f"{prompt_name}.csv"
@@ -379,8 +398,8 @@ def main() -> int:
             print(f"Wrote {len(rows)} rows -> {output_file}")
 
     text_log_file = args.text_log_file
-    if text_log_file is None and args.single_output_file is not None:
-        text_log_file = args.single_output_file.with_suffix(".log")
+    if text_log_file is None and single_output_path is not None:
+        text_log_file = single_output_path.with_suffix(".log")
 
     if text_log_file is not None:
         write_text_log(text_log_file, generated_rows, append=args.append)
