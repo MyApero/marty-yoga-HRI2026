@@ -8,28 +8,28 @@ howto = """1. Begin in Tadasana (Mountain Pose). Exhale and step your feet wide 
 6. Gaze softly over your right fingertips, keeping shoulders relaxed and stacked directly over your hips."""
 
 [pose]
-R-Wrist = 170.3
-L-Wrist = 172.88
-R-Elbow = 61.55
-L-Elbow = 152.7
-R-Shoulder = 23.6
-L-Shoulder = 18.15
-R-Knee = 177.07
-L-Knee = 175.98
-R-Hip = 89.4
-L-Hip = 90.49
-Spine = 89.4
-Spine-Alignment = 167.54
-R-Ankle = 176.57
-L-Ankle = 163.51
+"Right Wrist" = 160.67
+"Left Wrist" = 161.05
+"Right Elbow" = 178.81
+"Left Elbow" = 179.3
+"Right Shoulder" = 61.84
+"Left Shoulder" = 117.52
+"Right Knee" = 167.69
+"Left Knee" = 105.11
+"Right Hip" = 132.41
+"Left Hip" = 98.9
+Spine = 132.41
+"Spine Alignment" = 160.79
+"Right Ankle" = 100.63
+"Left Ankle" = 119.52
 
 [marty]
-LeftHip = 45
+LeftHip = -50
 LeftTwist = 0
 LeftKnee = 0
-RightHip = -45
-RightTwist = 40
-RightKnee = 15
-LeftArm = 90
-RightArm = -150
-Eyes = 1
+RightHip = 50
+RightTwist = 0
+RightKnee = 0
+LeftArm = 150
+RightArm = 150
+Eyes = 0

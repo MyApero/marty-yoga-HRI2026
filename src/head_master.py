@@ -23,7 +23,7 @@ from enum import Enum
 # Initial Setup
 CONFIG_FILE = "config.toml"
 POSES_FOLDER = "poses/"
-POSES_LIST = ["chair", "crescent_moon", "left_warrior1", "left_warrior2", "mountain"]
+POSES_LIST = ["chair", "crescent_moon", "left_warrior1", "left_warrior2", "right_warrior1", "right_warrior2", "mountain"]
 
 MARGIN_BEFORE_CORRECTION_FEEDBACK_S = 5
 TIME_GENERATION_END_FEEDBACK_S = 12.0
@@ -404,7 +404,7 @@ class HeadMaster:
 
     def generate_yoga_images_with_landmarks(
         self,
-        poses=["chair", "left_warrior2", "mountain", "right_warrior2"],
+        poses=["chair", "crescent_moon", "left_warrior1", "right_warrior1", "left_warrior2", "right_warrior2", "mountain"],
         verbose=True,
     ):
         saved_files = []
@@ -436,7 +436,7 @@ class HeadMaster:
 
     def run_demo(self, poses=None):
         if poses is None:
-            poses = ["chair", "left_warrior2"]
+            poses = ["chair", "crescent_moon", "left_warrior1", "left_warrior2", "mountain"]
         self.voice.intro()
         for pose in poses:
             self.do_exercise(pose)

@@ -24,12 +24,12 @@ Spine = 65.85
 "Left Ankle" = 106.96
 
 [marty]
-LeftHip = -53
-LeftTwist = 5
-LeftKnee = 1
-RightHip = 54
-RightTwist = 5
-RightKnee = 7
-LeftArm = 144
-RightArm = 151
-Eyes = 1
+LeftHip = 0
+LeftTwist = 0
+LeftKnee = 0
+RightHip = 0
+RightTwist = 0
+RightKnee = 0
+LeftArm = 150
+RightArm = 150
+Eyes = 0
