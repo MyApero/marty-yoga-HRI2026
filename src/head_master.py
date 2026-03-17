@@ -42,8 +42,19 @@ EXERCISE_KEY_MAP = {
     ord("6"): "right_warrior1",
     ord("7"): "right_warrior2",
 }
+MEDIAPIPE_KEY_MAP = {
+    ord("q"): "chair",
+    ord("w"): "crescent_moon",
+    ord("e"): "left_warrior1",
+    ord("r"): "left_warrior2",
+    ord("t"): "mountain",
+    ord("y"): "right_warrior1",
+    ord("u"): "right_warrior2",
+}
 RANDOM_DEMO_POOL = ["chair", "crescent_moon", "left_warrior1", "left_warrior2"]
 RANDOM_DEMO_COUNT = 2
+MARTY_ONLY_POSE_DURATION_S = 5
+MEDIAPIPE_ONLY_POSE_DURATION_S = 20
 
 MARGIN_BEFORE_CORRECTION_FEEDBACK_S = 5
 TIME_GENERATION_END_FEEDBACK_S = 12.0
@@ -205,9 +216,15 @@ class HeadMaster:
         else:
             self.set_interaction_state(InteractionState.IN_POSE_NO_CORRECTIVE_FEEDBACK)
 
-    def update_window(self, show_landmarks=False, timer_text="", elapsed=0.0):
+    def update_window(
+        self,
+        show_landmarks=False,
+        timer_text="",
+        elapsed=0.0,
+        enable_corrective_feedback=True,
+    ):
         self.process_camera_image(show_landmarks, timer_text, elapsed)
-        if elapsed > MARGIN_BEFORE_CORRECTION_FEEDBACK_S:
+        if enable_corrective_feedback and elapsed > MARGIN_BEFORE_CORRECTION_FEEDBACK_S:
             self.update_correction_feedback()
 
     def process_camera_image(self, show_landmarks=False, timer_text="", elapsed=0.0):
@@ -316,6 +333,60 @@ class HeadMaster:
         print()
         print("Feedback:", feedback)
 
+    def do_marty_pose_only(self, pose: str, duration_s=MARTY_ONLY_POSE_DURATION_S):
+        self.session.pose_name = pose
+        self.session.pose_ended = False
+        self.set_interaction_state(InteractionState.PRESENTING)
+
+        if self.marty:
+            self.marty.load_and_do_pose(POSES_FOLDER + pose + "/pose.toml")
+
+        start_time = time.time()
+        elapsed_time = 0.0
+        while elapsed_time < duration_s:
+            elapsed_time = time.time() - start_time
+            timer_text = f"Hold: {int(elapsed_time)}s / {duration_s}s"
+            self.update_window(
+                show_landmarks=False, timer_text=timer_text, elapsed=elapsed_time
+            )
+            key = cv2.waitKey(1) & 0xFF
+            if key == 27:
+                break
+
+        self.reset_marty_pos()
+        self.session.pose_ended = True
+        self.set_interaction_state(InteractionState.IDLE)
+
+    def do_mediapipe_pose_only(
+        self, pose: str, duration_s=MEDIAPIPE_ONLY_POSE_DURATION_S
+    ):
+        self.session.pose_name = pose
+        self.session.pose_ended = False
+        self.session.is_pose_ending = False
+        self.session.actual_run = []
+        self.feedback_engine.reset()
+        self.set_interaction_state(InteractionState.IN_POSE_NO_CORRECTIVE_FEEDBACK)
+
+        start_time = time.time()
+        elapsed_time = 0.0
+        while elapsed_time < duration_s:
+            elapsed_time = time.time() - start_time
+            timer_text = f"Time in pose: {int(elapsed_time)}s / {duration_s}s"
+            self.update_window(
+                show_landmarks=True,
+                timer_text=timer_text,
+                elapsed=elapsed_time,
+                enable_corrective_feedback=False,
+            )
+            key = cv2.waitKey(1) & 0xFF
+            if key == 27:
+                break
+            if key == ord("c"):
+                self.session.name_files = str(time.time())
+
+        self.session.pose_ended = True
+        self.set_interaction_state(InteractionState.IDLE)
+
     def wait_for_event(self, event):
         """
         Waits for a specific event (utterance completion),
@@ -324,7 +395,7 @@ class HeadMaster:
         while not event.is_set():
             self.update_window(show_landmarks=False)
             key = cv2.waitKey(1) & 0xFF
-            if key == ord("q"):
+            if key == 27:
                 break
 
     def reset_marty_pos(self):
@@ -407,7 +478,7 @@ class HeadMaster:
                 self.marty.set_light_marty(hex, elapsed_time, self.pose_duration)
                 led_update_marty = elapsed_time
             key = cv2.waitKey(1) & 0xFF
-            if key == ord("q"):
+            if key == 27:
                 break
             if key == ord("c"):
                 self.session.name_files = str(time.time())
@@ -477,19 +548,21 @@ class HeadMaster:
         self.voice.outro()
 
     def handle_key_event(self, key):
-        if key == ord("q"):
+        if key == 27:
             self.cleanup()
             return False
         if key == ord("s"):
             self.voice.intro()
-        elif key == ord("y"):
+        elif key == ord("p"):
             self.logger.setLevel(logging.WARNING)
             self.generate_yoga_images_with_landmarks()
         elif key == ord("d"):
             random_demo_poses = random.sample(RANDOM_DEMO_POOL, RANDOM_DEMO_COUNT)
             self.run_demo(poses=random_demo_poses)
         elif key in EXERCISE_KEY_MAP:
-            self.do_exercise(EXERCISE_KEY_MAP[key])
+            self.do_marty_pose_only(EXERCISE_KEY_MAP[key])
+        elif key in MEDIAPIPE_KEY_MAP:
+            self.do_mediapipe_pose_only(MEDIAPIPE_KEY_MAP[key])
         return True
 
     def tick(self, key):

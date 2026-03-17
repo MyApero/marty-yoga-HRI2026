@@ -5,20 +5,20 @@ context = "Crescent Moon (Anjaneyasana) pose deeply stretches and opens the side
 howto = "The body is in the standing position, with the feet together and rooted into the earth. The weight of the body is evenly distributed on the four corners of the feet. The pelvis is tucked. The ribcage is lifted. The neck is a natural extension of the spine and the chin is slightly tucked toward the sternum. The shoulders are relaxed as they rotate back and down. The arms at your sides. The arms are extend upwards toward the sky as you bend to one side, lengthening the opposite side of the rib cage and stretch."
 
 [pose]
-"Right Wrist" = 150.64
-"Left Wrist" = 158.07
-"Right Elbow" = 168.27
-"Left Elbow" = 167.64
-"Right Shoulder" = 126.44
-"Left Shoulder" = 65.3
-"Right Knee" = 178.49
-"Left Knee" = 178.89
-"Right Hip" = 100.0
-"Left Hip" = 75.0
-Spine = 65.85
-"Spine Alignment" = 178.5
-"Right Ankle" = 110.67
-"Left Ankle" = 106.96
+"Right Wrist" = 171.27
+"Left Wrist" = 161.43
+"Right Elbow" = 172.95
+"Left Elbow" = 176.38
+"Right Shoulder" = 92.41
+"Left Shoulder" = 83.82
+"Right Knee" = 172.21
+"Left Knee" = 173.78
+"Right Hip" = 86.71
+"Left Hip" = 93.51
+Spine = 86.71
+"Spine Alignment" = 160.97
+"Right Ankle" = 116.81
+"Left Ankle" = 105.6
 
 [marty]
 LeftHip = 0

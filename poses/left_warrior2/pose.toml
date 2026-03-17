@@ -6,20 +6,21 @@ howto = "From a standing position, the legs are separated into a wide stance. Th
 
 
 [pose]
-"Right Wrist" = 176.21
-"Left Wrist" = 173.47
-"Right Elbow" = 174.19
-"Left Elbow" = 179.37
-"Right Shoulder" = 93.66
-"Left Shoulder" = 95.43
-"Right Knee" = 100.17
-"Left Knee" = 170.25
-"Right Hip" = 89.67
-"Left Hip" = 121.19
-Spine = 149.62
-"Spine Alignment" = 167.69
-"Right Ankle" = 122.08
-"Left Ankle" = 96.52
+"Right Wrist" = 174.94
+"Left Wrist" = 176.95
+"Right Elbow" = 162.1
+"Left Elbow" = 166.7
+"Right Shoulder" = 74.15
+"Left Shoulder" = 104.83
+"Right Knee" = 170.44
+"Left Knee" = 100.22
+"Right Hip" = 133.19
+"Left Hip" = 95.87
+Spine = 137.33
+"Spine Alignment" = 163.71
+"Right Ankle" = 102.18
+"Left Ankle" = 118.09
+
 
 [marty]
 LeftHip = 50
