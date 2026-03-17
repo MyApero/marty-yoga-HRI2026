@@ -108,7 +108,7 @@ class HeadMaster:
         self._cleaned_up = False
 
         perf_config = self.config.get("performance", {})
-        self.show_perf_overlay = perf_config.get("show_perf_overlay", True)
+        self.show_perf_overlay = perf_config.get("show_perf_overlay", False)
         self.fps_smoothing = perf_config.get("fps_smoothing", 0.2)
         self.smoothed_fps = None
         self.last_show_ms = 0.0
@@ -474,6 +474,7 @@ class HeadMaster:
         self.voice.intro()
         for pose in poses:
             self.do_exercise(pose)
+        self.voice.outro()
 
     def handle_key_event(self, key):
         if key == ord("q"):

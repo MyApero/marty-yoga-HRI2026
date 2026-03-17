@@ -18,6 +18,22 @@ def build_intro_messages():
         },
     ]
 
+OUTRO_SYSTEM_PROMPT = (
+    "You are a friendly yoga coach named Marty. Tell the student to enjoy the HRI 2026 conference in Edinburgh. "
+    "Keep it to max length of 25 words. No -. No questions."
+    "Creative and engaging outro is appreciated. "
+)
+
+def build_outro_messages():
+    return [
+        {"role": "system", "content": OUTRO_SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": "Say goodbye to the student.",
+        },
+    ]
+
+
 
 LOAD_POSE_SYSTEM_PROMPT = (
     "You are a friendly yoga coach. Introduce the pose (mention its name), briefly describing it while being encouraging. "

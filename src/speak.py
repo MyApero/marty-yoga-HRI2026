@@ -16,6 +16,7 @@ from src.speak_prompts import (
     INTRO_MODEL,
     CORRECTIVE_FEEDBACK_MODEL,
     build_intro_messages,
+    build_outro_messages,
     build_show_pose_messages,
     build_load_pose_messages,
     build_corrective_feedback_messages,
@@ -449,6 +450,9 @@ class Speak:
 
     def intro(self):
         return self.say(build_intro_messages(), model=INTRO_MODEL)
+    
+    def outro(self):
+        return self.say(build_outro_messages(), model=INTRO_MODEL)
 
     def start_counter(self):
         completion_event = threading.Event()

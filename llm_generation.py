@@ -20,12 +20,14 @@ from src.speak_prompts import (
     build_corrective_feedback_messages,
     build_end_pose_feedback_messages,
     build_intro_messages,
+    build_outro_messages,
     build_load_pose_messages,
     build_show_pose_messages,
 )
 
 PROMPT_NAMES = (
     "intro",
+    "outro",
     "show_pose",
     "load_pose",
     "corrective_feedback",
@@ -201,6 +203,15 @@ def build_jobs(
                 "pose_name": "",
                 "model": general_model,
                 "messages": build_intro_messages(),
+            }
+        )
+    elif "outro" in selected_prompts:
+        jobs.append(
+            {
+                "prompt_name": "outro",
+                "pose_name": "",
+                "model": general_model,
+                "messages": build_outro_messages(),
             }
         )
 
