@@ -11,6 +11,21 @@ class WindowRenderer:
         self.config = config
         self.voice = voice
         self.logger = logger
+        window_config = self.config.get("window", {})
+        self.enable_portrait_side_panels = window_config.get(
+            "enable_portrait_side_panels", True
+        )
+        self.side_panel_ratio = window_config.get("side_panel_ratio", 0.15)
+        self.side_panel_min_width = window_config.get("side_panel_min_width", 340)
+        self.render_scale = float(window_config.get("render_scale", 2.0))
+        self.resize_interpolation = window_config.get(
+            "resize_interpolation", cv2.INTER_LINEAR
+        )
+        self.subtitle_font_scale = float(window_config.get("subtitle_font_scale", 1.0))
+        self.subtitle_thickness = int(window_config.get("subtitle_thickness", 2))
+        self.side_panel_width = 0
+        self._pose_preview_cache_key = None
+        self._pose_preview_cache_image = None
         self.last_frame_timings = {
             "filter_ms": 0.0,
             "detect_ms": 0.0,
@@ -23,6 +38,27 @@ class WindowRenderer:
 
     def filter_image(self, image):
         return apply_film_effect(image.numpy_view(), self.config["film_settings"])
+
+    def add_side_panels(self, frame):
+        frame_height, frame_width = frame.shape[:2]
+        self.side_panel_width = 0
+
+        if not self.enable_portrait_side_panels or frame_height <= frame_width:
+            return frame
+
+        computed_panel_width = int(frame_width * float(self.side_panel_ratio))
+        panel_width = max(int(self.side_panel_min_width), computed_panel_width)
+        canvas = cv2.copyMakeBorder(
+            frame,
+            0,
+            0,
+            panel_width,
+            panel_width,
+            cv2.BORDER_CONSTANT,
+            value=(0, 0, 0),
+        )
+        self.side_panel_width = panel_width
+        return canvas
 
     def process_image(
         self,
@@ -69,17 +105,21 @@ class WindowRenderer:
                 2,
             )
 
-        self.draw_overlays(
+        resize_start = time.perf_counter()
+        frame = cv2.resize(
             output_frame,
+            None,
+            fx=self.render_scale,
+            fy=self.render_scale,
+            interpolation=self.resize_interpolation,
+        )
+        frame = self.add_side_panels(frame)
+        self.draw_overlays(
+            frame,
             pose_name,
             pose_data,
             pose_ended,
             interaction_state_text,
-        )
-
-        resize_start = time.perf_counter()
-        frame = cv2.resize(
-            output_frame, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC
         )
 
         resize_ms = (time.perf_counter() - resize_start) * 1000.0
@@ -103,9 +143,18 @@ class WindowRenderer:
     ):
         subtitles = self.voice.subtitles if self.voice else ""
         if subtitles:
+            sample_size, sample_baseline = cv2.getTextSize(
+                "Ag",
+                cv2.FONT_HERSHEY_SIMPLEX,
+                self.subtitle_font_scale,
+                self.subtitle_thickness,
+            )
+            text_height = sample_size[1]
+            bar_padding = 10
+            bar_top = frame.shape[0] - (text_height + sample_baseline + bar_padding * 2)
             cv2.rectangle(
                 frame,
-                (5, frame.shape[0] - 40),
+                (5, bar_top),
                 (frame.shape[1] - 5, frame.shape[0] - 5),
                 (0, 0, 0),
                 -1,
@@ -117,11 +166,11 @@ class WindowRenderer:
             cv2.putText(
                 frame,
                 showed_text,
-                (10, frame.shape[0] - 20),
+                (10, frame.shape[0] - sample_baseline - bar_padding),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
+                self.subtitle_font_scale,
                 (255, 255, 255),
-                2,
+                self.subtitle_thickness,
             )
 
         if interaction_state_text:
@@ -189,12 +238,19 @@ class WindowRenderer:
                 and pose_data["image"] is not None
                 and not pose_ended
             ):
-                image_size = 300
-                pose_image_resized = cv2.resize(
-                    pose_data["image"],
-                    (image_size, image_size),
-                    interpolation=cv2.INTER_CUBIC,
+                available_left_width = max(0, self.side_panel_width - 20)
+                image_size = (
+                    min(300, available_left_width) if available_left_width else 300
                 )
+                cache_key = (pose_name, image_size)
+                if self._pose_preview_cache_key != cache_key:
+                    self._pose_preview_cache_image = cv2.resize(
+                        pose_data["image"],
+                        (image_size, image_size),
+                        interpolation=cv2.INTER_LINEAR,
+                    )
+                    self._pose_preview_cache_key = cache_key
+                pose_image_resized = self._pose_preview_cache_image
                 frame[10 : 10 + image_size, 10 : 10 + image_size] = pose_image_resized
                 full_pose_name = pose_name.replace("_", " ").title()
                 yoga_name = pose_data.get("yoga_name", "")

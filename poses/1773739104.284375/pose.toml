@@ -1,0 +1,30 @@
+[description]
+context = ""
+howto = ""
+
+[pose]
+"Right Wrist" = 177.77
+"Left Wrist" = 159.81
+"Right Elbow" = 168.7
+"Left Elbow" = 175.87
+"Right Shoulder" = 78.31
+"Left Shoulder" = 110.12
+"Right Knee" = 84.73
+"Left Knee" = 87.3
+"Right Hip" = 18.37
+"Left Hip" = 81.26
+Spine = 18.37
+"Spine Alignment" = 178.69
+"Right Ankle" = 94.54
+"Left Ankle" = 105.11
+
+[marty]
+LeftHip = 0
+LeftTwist = 0
+LeftKnee = 0
+RightHip = 0
+RightTwist = 0
+RightKnee = 0
+LeftArm = 0
+RightArm = 0
+Eyes = 0
