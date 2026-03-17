@@ -3,6 +3,7 @@ import os
 import time
 import logging
 import sys
+import random
 import toml
 from src.utils import loading_print, get_color_gradient
 
@@ -23,7 +24,26 @@ from enum import Enum
 # Initial Setup
 CONFIG_FILE = "config.toml"
 POSES_FOLDER = "poses/"
-POSES_LIST = ["chair", "crescent_moon", "left_warrior1", "left_warrior2", "right_warrior1", "right_warrior2", "mountain"]
+POSES_LIST = [
+    "chair",
+    "crescent_moon",
+    "left_warrior1",
+    "left_warrior2",
+    "right_warrior1",
+    "right_warrior2",
+    "mountain",
+]
+EXERCISE_KEY_MAP = {
+    ord("1"): "chair",
+    ord("2"): "crescent_moon",
+    ord("3"): "left_warrior1",
+    ord("4"): "left_warrior2",
+    ord("5"): "mountain",
+    ord("6"): "right_warrior1",
+    ord("7"): "right_warrior2",
+}
+RANDOM_DEMO_POOL = ["chair", "crescent_moon", "left_warrior1", "left_warrior2"]
+RANDOM_DEMO_COUNT = 2
 
 MARGIN_BEFORE_CORRECTION_FEEDBACK_S = 5
 TIME_GENERATION_END_FEEDBACK_S = 12.0
@@ -404,7 +424,15 @@ class HeadMaster:
 
     def generate_yoga_images_with_landmarks(
         self,
-        poses=["chair", "crescent_moon", "left_warrior1", "right_warrior1", "left_warrior2", "right_warrior2", "mountain"],
+        poses=[
+            "chair",
+            "crescent_moon",
+            "left_warrior1",
+            "right_warrior1",
+            "left_warrior2",
+            "right_warrior2",
+            "mountain",
+        ],
         verbose=True,
     ):
         saved_files = []
@@ -436,7 +464,13 @@ class HeadMaster:
 
     def run_demo(self, poses=None):
         if poses is None:
-            poses = ["chair", "crescent_moon", "left_warrior1", "left_warrior2", "mountain"]
+            poses = [
+                "chair",
+                "crescent_moon",
+                "left_warrior1",
+                "left_warrior2",
+                "mountain",
+            ]
         self.voice.intro()
         for pose in poses:
             self.do_exercise(pose)
@@ -451,7 +485,10 @@ class HeadMaster:
             self.logger.setLevel(logging.WARNING)
             self.generate_yoga_images_with_landmarks()
         elif key == ord("d"):
-            self.run_demo()
+            random_demo_poses = random.sample(RANDOM_DEMO_POOL, RANDOM_DEMO_COUNT)
+            self.run_demo(poses=random_demo_poses)
+        elif key in EXERCISE_KEY_MAP:
+            self.do_exercise(EXERCISE_KEY_MAP[key])
         return True
 
     def tick(self, key):
