@@ -23,7 +23,7 @@ line_thickness = 5
 head_radius_multiplier = 0.6
 
 [performance]
-show_perf_overlay = true
+show_perf_overlay = false
 fps_smoothing = 0.2
 
 [colors]
