@@ -12,20 +12,20 @@ howto = """(Chair Pose) From a standing position, the feet are together and root
 # """
 
 [pose]
-"Right Wrist" = 175.09
-"Left Wrist" = 158.73
-"Right Elbow" = 175.47
-"Left Elbow" = 174.66
-"Right Shoulder" = 96.9
-"Left Shoulder" = 100.59
-"Right Knee" = 111.32
-"Left Knee" = 126.21
-"Right Hip" = 46.64
-"Left Hip" = 114.99
-Spine = 46.64
-"Spine Alignment" = 168.98
-"Right Ankle" = 101.34
-"Left Ankle" = 123.22
+"Right Wrist" = 177.81
+"Left Wrist" = 164.36
+"Right Elbow" = 177.94
+"Left Elbow" = 169.62
+"Right Shoulder" = 88.87
+"Left Shoulder" = 103.31
+"Right Knee" = 132.52
+"Left Knee" = 130.75
+"Right Hip" = 58.37
+"Left Hip" = 126.23
+Spine = 58.37
+"Spine Alignment" = 159.02
+"Right Ankle" = 114.12
+"Left Ankle" = 117.91
 
 [marty]
 LeftHip = 50

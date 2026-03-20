@@ -52,13 +52,13 @@ MEDIAPIPE_KEY_MAP = {
     ord("u"): "right_warrior2",
 }
 RANDOM_DEMO_POOL = ["chair", "crescent_moon", "left_warrior1", "left_warrior2"]
-RANDOM_DEMO_COUNT = 2
+RANDOM_DEMO_COUNT = 1
 MARTY_ONLY_POSE_DURATION_S = 5
-MEDIAPIPE_ONLY_POSE_DURATION_S = 20
+MEDIAPIPE_ONLY_POSE_DURATION_S = 1500
 
 MARGIN_BEFORE_CORRECTION_FEEDBACK_S = 5
 TIME_GENERATION_END_FEEDBACK_S = 12.0
-POSE_DURATION_S = 50
+POSE_DURATION_S = 25
 SEND_CORRECTION_THRESHOLD = (
     0.7  # the lower, the higher the chance of sending correction
 )
@@ -91,6 +91,9 @@ class HeadMaster:
 
         self.config = load_toml(CONFIG_FILE)
         self.current_config = current_config
+        self.camera_rotation_degrees = int(
+            self.current_config.get("camera_rotation_degrees", 0)
+        )
         self.camera = self.init_camera(self.current_config)
         self.marty = self.init_marty() if enable_marty else None
         self.session = SessionState()
@@ -123,6 +126,7 @@ class HeadMaster:
         self.fps_smoothing = perf_config.get("fps_smoothing", 0.2)
         self.smoothed_fps = None
         self.last_show_ms = 0.0
+        self.ignore_escape_until = 0.0
 
     def set_interaction_state(self, new_state):
         if self.interaction_state == new_state:
@@ -231,7 +235,10 @@ class HeadMaster:
         frame_start = time.perf_counter()
 
         capture_start = time.perf_counter()
-        camera_image = capture_image_from_camera(self.camera)
+        camera_image = capture_image_from_camera(
+            self.camera,
+            rotation_degrees=self.camera_rotation_degrees,
+        )
         capture_ms = (time.perf_counter() - capture_start) * 1000.0
 
         frame = self.process_image(camera_image, show_landmarks, timer_text, elapsed)
@@ -365,7 +372,12 @@ class HeadMaster:
         self.session.is_pose_ending = False
         self.session.actual_run = []
         self.feedback_engine.reset()
-        self.set_interaction_state(InteractionState.IN_POSE_NO_CORRECTIVE_FEEDBACK)
+        self.session.pose_name = pose
+        self.session.pose_ended = False
+        self.set_interaction_state(InteractionState.PRESENTING)
+
+        if self.marty:
+            self.marty.load_and_do_pose(POSES_FOLDER + pose + "/pose.toml")
 
         start_time = time.time()
         elapsed_time = 0.0
@@ -380,6 +392,8 @@ class HeadMaster:
             )
             key = cv2.waitKey(1) & 0xFF
             if key == 27:
+                # Avoid using the same ESC keypress to trigger global quit right after abort.
+                self.ignore_escape_until = time.time() + 0.35
                 break
             if key == ord("c"):
                 self.session.name_files = str(time.time())
@@ -549,6 +563,8 @@ class HeadMaster:
 
     def handle_key_event(self, key):
         if key == 27:
+            if time.time() < self.ignore_escape_until:
+                return True
             self.cleanup()
             return False
         if key == ord("s"):

@@ -5,11 +5,12 @@ marty = "bluetooth://Marty-Yoga"
 camera = 0
 
 [config_macos]
-marty = "usb:///dev/tty.usbserial-110"
+marty = "usb:///dev/tty.usbserial-10"
 camera = 0
 camera_width = 1280
 camera_height = 720
 camera_fps = 30
+camera_rotation_degrees = 90
 
 [config_linux]
 marty = "usb:///dev/ttyUSB0"
@@ -28,7 +29,7 @@ fps_smoothing = 0.2
 
 [window]
 enable_portrait_side_panels = true
-side_panel_min_width = 850
+side_panel_min_width = 1000
 side_panel_ratio = 0.50
 render_scale = 1.5
 subtitle_font_scale = 1.8

@@ -242,6 +242,7 @@ class WindowRenderer:
                 image_size = (
                     min(300, available_left_width) if available_left_width else 300
                 )
+                image_size += 650
                 cache_key = (pose_name, image_size)
                 if self._pose_preview_cache_key != cache_key:
                     self._pose_preview_cache_image = cv2.resize(
@@ -259,9 +260,9 @@ class WindowRenderer:
                 cv2.putText(
                     frame,
                     full_pose_name,
-                    (10, image_size + 35),
+                    (10, image_size + 60),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6,
+                    1.8,
                     (255, 255, 255),
                     2,
                 )
