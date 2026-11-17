@@ -37,3 +37,44 @@ RightKnee = 0
 LeftArm = 150
 RightArm = 150
 Eyes = 0
+
+# reachy_yoga poses.json "chair", degrees
+[reachy_mini_so101_humanoid_urdf]
+right_antenna = -15
+left_antenna = 15
+l_leg_wrist_flex = 14
+l_leg_elbow_flex = -37
+l_leg_shoulder_lift = -89
+l_arm_wrist_flex = -2
+l_arm_elbow_flex = -74
+l_arm_shoulder_lift = 68
+l_arm_shoulder_pan = 1
+r_leg_wrist_flex = 14
+r_leg_elbow_flex = -37
+r_leg_shoulder_lift = -89
+r_arm_wrist_flex = -2
+r_arm_elbow_flex = -74
+r_arm_shoulder_lift = 68
+r_arm_shoulder_pan = 5
+
+# Degrees; checked with forward kinematics: feet flat and level, inside the joint limits.
+[unitree_g1_urdf]
+left_ankle_pitch_joint = -35
+left_ankle_roll_joint = 0
+left_elbow_joint = 90
+left_hip_pitch_joint = -45
+left_hip_roll_joint = 0
+left_hip_yaw_joint = 0
+left_knee_joint = 80
+left_shoulder_pitch_joint = -170
+left_shoulder_roll_joint = 8
+right_ankle_pitch_joint = -35
+right_ankle_roll_joint = 0
+right_elbow_joint = 90
+right_hip_pitch_joint = -45
+right_hip_roll_joint = 0
+right_hip_yaw_joint = 0
+right_knee_joint = 80
+right_shoulder_pitch_joint = -170
+right_shoulder_roll_joint = -8
+waist_roll_joint = 0

@@ -30,3 +30,42 @@ RightKnee = 0
 LeftArm = 0
 RightArm = 0
 Eyes = 0
+
+# reachy_yoga poses.json "mountain", degrees
+[reachy_mini_so101_humanoid_urdf]
+l_leg_wrist_flex = -2
+l_leg_elbow_flex = -74
+l_leg_shoulder_lift = -14
+l_arm_wrist_flex = -2
+l_arm_elbow_flex = -74
+l_arm_shoulder_lift = -96
+l_arm_shoulder_pan = -4
+r_leg_wrist_flex = -2
+r_leg_elbow_flex = -74
+r_leg_shoulder_lift = -14
+r_arm_wrist_flex = -2
+r_arm_elbow_flex = -74
+r_arm_shoulder_lift = -96
+r_arm_shoulder_pan = -4
+
+# Degrees; checked with forward kinematics: feet flat and level, inside the joint limits.
+[unitree_g1_urdf]
+left_ankle_pitch_joint = 0
+left_ankle_roll_joint = 0
+left_elbow_joint = 90
+left_hip_pitch_joint = 0
+left_hip_roll_joint = 0
+left_hip_yaw_joint = 0
+left_knee_joint = 0
+left_shoulder_pitch_joint = 0
+left_shoulder_roll_joint = 8
+right_ankle_pitch_joint = 0
+right_ankle_roll_joint = 0
+right_elbow_joint = 90
+right_hip_pitch_joint = 0
+right_hip_roll_joint = 0
+right_hip_yaw_joint = 0
+right_knee_joint = 0
+right_shoulder_pitch_joint = 0
+right_shoulder_roll_joint = -8
+waist_roll_joint = 0

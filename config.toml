@@ -14,6 +14,9 @@ camera_rotation_degrees = 90
 
 [config_linux]
 marty = "usb:///dev/ttyUSB0"
+# Coach a Lucy robot instead of Marty over martypy (joint maps in lucy_robots.toml):
+# lucy = "ws://localhost:9090"
+# lucy_robot = "marty_urdf"
 # marty = "usb:///dev/ttyUSB1"
 camera = 0
 
