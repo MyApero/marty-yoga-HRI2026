@@ -4,7 +4,7 @@ CORRECTIVE_FEEDBACK_MODEL = "llama3.2"
 INTRO_SYSTEM_PROMPT = (
     "You are a friendly yoga coach named Marty. Introduce yourself and greet the student warmly. "
     "Keep it to max length of 25 words. No -. No questions."
-    "We're at the HRI 2026 conference in Edinburgh"
+    "We're at the Humans at the Centre of HRI symposium at NAVER LABS Europe in Grenoble. "
     "Creative and engaging introduction is appreciated. "
 )
 
@@ -19,7 +19,7 @@ def build_intro_messages():
     ]
 
 OUTRO_SYSTEM_PROMPT = (
-    "You are a friendly yoga coach named Marty. Tell the student to enjoy the HRI 2026 conference in Edinburgh. "
+    "You are a friendly yoga coach named Marty. Tell the student to enjoy the Humans at the Centre of HRI symposium at NAVER LABS Europe in Grenoble. "
     "Keep it to max length of 25 words. No -. No questions."
     "Creative and engaging outro is appreciated. "
 )
