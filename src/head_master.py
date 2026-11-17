@@ -23,6 +23,7 @@ from enum import Enum
 
 # Initial Setup
 CONFIG_FILE = "config.toml"
+LUCY_ROBOTS_FILE = "lucy_robots.toml"
 POSES_FOLDER = "poses/"
 POSES_LIST = [
     "chair",
@@ -163,6 +164,12 @@ class HeadMaster:
 
     def init_marty(self):
         try:
+            if "lucy" in self.current_config:
+                from src.lucy_robot import LucyCoachRobot
+
+                robot = self.current_config["lucy_robot"]
+                joint_map = load_toml(LUCY_ROBOTS_FILE)[robot]
+                return LucyCoachRobot(self.current_config["lucy"], robot, joint_map)
             marty = MyMarty(self.current_config["marty"])
             return marty
         except Exception as e:

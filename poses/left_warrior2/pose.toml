@@ -32,3 +32,24 @@ RightKnee = 0
 LeftArm = 90
 RightArm = -70
 Eyes = 0
+
+# reachy_yoga poses.json "warrior_2", degrees
+[reachy_mini_so101_humanoid_urdf]
+right_antenna = 30
+left_antenna = -30
+l_leg_wrist_flex = -2
+l_leg_elbow_flex = 5
+l_leg_shoulder_lift = -93
+l_leg_shoulder_pan = 90
+l_arm_wrist_flex = -2
+l_arm_elbow_flex = -74
+l_arm_shoulder_lift = -14
+l_arm_shoulder_pan = -10
+r_leg_wrist_flex = -53
+r_leg_elbow_flex = -74
+r_leg_shoulder_lift = 37
+r_leg_shoulder_pan = 90
+r_arm_wrist_flex = -2
+r_arm_elbow_flex = -74
+r_arm_shoulder_lift = -14
+r_arm_shoulder_pan = -16

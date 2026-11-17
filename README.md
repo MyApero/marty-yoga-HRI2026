@@ -133,6 +133,23 @@ python main.py
 
 Once the video window appears, press the `d` key on your keyboard to start the session and enable pose analysis.
 
+## 🤖 Coaching any robot through Lucy
+
+The coach can drive any robot running [Lucy](https://github.com/Lucy-Robotics/lucy_ws) instead of talking to Marty directly.
+
+1. Start Lucy with your robot (e.g. `LUCY_ROBOT_PACKAGE=reachy_mini_so101_humanoid_urdf pixi run core`).
+2. In `config.toml`, under your OS section, set:
+   ```toml
+   lucy = "ws://localhost:9090"
+   lucy_robot = "reachy_mini_so101_humanoid_urdf"   # or marty_urdf, unitree_g1_urdf, unitree_r1_urdf
+   ```
+3. Run `python main.py` as usual.
+
+The coach finds the robot's joints and controllers from Lucy, lights the eye ring on `/eye_leds`, and maps its gestures
+(arms, hips, knees, eyes) through `lucy_robots.toml`. A pose file with a section named after the robot package
+(e.g. `[reachy_mini_so101_humanoid_urdf]` in `poses/mountain/pose.toml`) gives that robot's exact joint angles; other poses fall back
+to the Marty values through the gesture map. Walking and kicks have no Lucy equivalent and are skipped.
+
 ## 🛠 Configuration & Custom Poses
 
 You can customize the experience by editing the various `.toml` configuration files found in the project directory.
