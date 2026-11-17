@@ -6,6 +6,9 @@ camera = 0
 
 [config_macos]
 marty = "usb:///dev/tty.usbserial-10"
+# Coach a Lucy robot instead of Marty over martypy (joint maps in lucy_robots.toml):
+# lucy = "ws://localhost:9090"
+# lucy_robot = "marty_urdf"
 camera = 0
 camera_width = 1280
 camera_height = 720
