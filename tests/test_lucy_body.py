@@ -3,7 +3,7 @@ import time
 
 import pytest
 
-from src.lucy_robot import LucyCoachRobot
+from src.lucy_robot import LucyCoachRobot, matching_robot
 
 JTC = "joint_trajectory_controller/JointTrajectoryController"
 CONTROLLERS = [
@@ -121,3 +121,46 @@ def test_the_lucy_robot_maps_load_with_the_coach_toml_reader():
 
     for robot, gestures in toml.load("lucy_robots.toml").items():
         assert all("joint" in row and "scale" in row for rows in gestures.values() for row in rows), robot
+
+
+ROBOTS = {
+    "marty_urdf": {"left arm": [{"joint": "arm_left_joint", "scale": 1.0}]},
+    "reachy_mini_so101_humanoid_urdf": {"left arm": [{"joint": "l_arm_shoulder_lift", "scale": 1.0}],
+                                        "eyes": [{"joint": "left_antenna", "scale": 1.0}]},
+    "unitree_g1_urdf": {"left knee": [{"joint": "left_knee_joint", "scale": 1.0}],
+                        "eyes": [{"joint": "waist_yaw_joint", "scale": 1.0}]},
+    "unitree_r1_urdf": {"left knee": [{"joint": "left_knee_joint", "scale": 1.0}],
+                        "eyes": [{"joint": "head_pitch_joint", "scale": 1.0}]},
+}
+
+
+def test_the_running_robot_wins_over_a_stale_config():
+    joints = {"l_arm_shoulder_lift", "left_antenna"}
+    assert matching_robot(ROBOTS, joints, preferred="marty_urdf") == "reachy_mini_so101_humanoid_urdf"
+
+
+def test_robots_sharing_joint_names_are_told_apart_by_the_rest():
+    assert matching_robot(ROBOTS, {"left_knee_joint", "waist_yaw_joint"}) == "unitree_g1_urdf"
+    assert matching_robot(ROBOTS, {"left_knee_joint", "head_pitch_joint"}) == "unitree_r1_urdf"
+
+
+def test_an_equal_fit_keeps_the_configured_robot():
+    joints = {"left_knee_joint", "waist_yaw_joint", "head_pitch_joint"}
+    assert matching_robot(ROBOTS, joints, preferred="unitree_r1_urdf") == "unitree_r1_urdf"
+
+
+def test_a_robot_with_no_mapped_joint_is_refused():
+    with pytest.raises(ValueError):
+        matching_robot(ROBOTS, {"some_other_joint"})
+
+
+def test_the_coach_switches_to_the_robot_lucy_runs():
+    class Running(FakeRobot):
+        def __init__(self):
+            self.topics = {}
+            LucyCoachRobot.__init__(self, "ws://localhost:9090", "marty_urdf", {}, ros=FakeRos(),
+                                    robots={**ROBOTS, "fake_urdf": {"left arm": [{"joint": "l_arm", "scale": 1.0}]}})
+
+    robot = Running()
+    assert robot.robot_package == "fake_urdf"
+    assert robot.targets("left arm", 10) == {"l_arm": pytest.approx(math.radians(10))}

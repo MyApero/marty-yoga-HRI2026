@@ -167,9 +167,9 @@ class HeadMaster:
             if "lucy" in self.current_config:
                 from src.lucy_robot import LucyCoachRobot
 
-                robot = self.current_config["lucy_robot"]
-                joint_map = load_toml(LUCY_ROBOTS_FILE)[robot]
-                return LucyCoachRobot(self.current_config["lucy"], robot, joint_map)
+                robots = load_toml(LUCY_ROBOTS_FILE)
+                preferred = self.current_config.get("lucy_robot")
+                return LucyCoachRobot(self.current_config["lucy"], preferred, robots.get(preferred, {}), robots=robots)
             marty = MyMarty(self.current_config["marty"])
             return marty
         except Exception as e:
