@@ -174,3 +174,13 @@ def test_the_coach_takes_control_so_the_panel_stops_sending_its_sliders():
     robot = FakeRobot({})
     assert ("/lucy/control", {"client_id": "yoga_coach", "acquire": True}) in robot.service_calls
     assert robot.topics["/lucy/client_heartbeat"].sent[0] == {"data": "yoga_coach"}
+
+
+def test_the_coach_still_moves_the_robot_when_lucy_refuses_control():
+    class Unanswered(FakeRobot):
+        def call_service(self, name, service_type, request):
+            raise TimeoutError("no /lucy/control yet")
+
+    robot = Unanswered({"left arm": [{"joint": "l_arm", "scale": 1.0}]})
+    robot.move_joint("left arm", 10, 100)
+    assert robot.topics["/arms_controller/joint_trajectory"].sent

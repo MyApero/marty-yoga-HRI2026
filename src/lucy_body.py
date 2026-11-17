@@ -68,9 +68,13 @@ class LucyBody:
         )["controller"]
 
     def take_control(self) -> None:
-        response = self.call_service(
-            "/lucy/control", "lucy_msgs/srv/ClientControl", {"client_id": CLIENT_ID, "acquire": True}
-        )
+        try:
+            response = self.call_service(
+                "/lucy/control", "lucy_msgs/srv/ClientControl", {"client_id": CLIENT_ID, "acquire": True}
+            )
+        except Exception as error:
+            print(f"Lucy control not taken, the panel may override the coach: {error}")
+            return
         if not response.get("success"):
             print(f"Lucy kept control elsewhere: {response.get('message')}")
 
