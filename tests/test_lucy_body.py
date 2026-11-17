@@ -206,3 +206,43 @@ def test_the_coach_takes_control_again_when_nobody_holds_it():
     robot.topics["/lucy/active_client"].callback({"data": ""})
     robot._beat_once()
     assert robot.service_calls[-1] == ("/lucy/control", {"client_id": "yoga_coach", "acquire": True})
+
+
+def test_a_controller_that_activates_after_the_coach_starts_is_still_driven():
+    class Late(FakeRobot):
+        listed = [[c for c in CONTROLLERS if c["name"] == "body_controller"]]
+
+        def list_controllers(self):
+            return self.listed[-1]
+
+    robot = Late({"left arm": [{"joint": "l_arm", "scale": 1.0}]})
+    assert "l_arm" not in robot.owners
+    Late.listed.append(CONTROLLERS)
+    robot.refreshed_at -= 10
+    robot.move_joint("left arm", 10, 100)
+    assert robot.topics["/arms_controller/joint_trajectory"].sent
+
+
+def test_moving_one_joint_holds_the_others_of_its_controller_where_they_are():
+    robot = FakeRobot({"left arm": [{"joint": "l_arm", "scale": 1.0}]})
+    robot._on_joint_states({"name": ["r_arm"], "position": [0.7]})
+    robot.move_joint("left arm", 10, 100)
+    sent = robot.topics["/arms_controller/joint_trajectory"].sent[-1]
+    positions = dict(zip(sent["joint_names"], sent["points"][0]["positions"]))
+    assert positions["r_arm"] == 0.7
+
+
+def test_the_coach_waits_until_lucy_has_brought_up_every_controller_of_the_robot():
+    class Booting(FakeRobot):
+        def list_controllers(self):
+            self.calls = getattr(self, "calls", 0) + 1
+            return CONTROLLERS if self.calls > 2 else [c for c in CONTROLLERS if c["name"] == "body_controller"]
+
+    robot = Booting.__new__(Booting)
+    robot.topics = {}
+    LucyCoachRobot.__init__(robot, "ws://localhost:9090", None, {}, ros=FakeRos(),
+                            robots={"fake_urdf": {"left arm": [{"joint": "l_arm", "scale": 1.0}],
+                                                  "eyes": [{"joint": "antenna", "scale": 1.0}]}})
+    assert robot.robot_package == "fake_urdf"
+    assert robot.owners["l_arm"] == "arms_controller"
+    assert "arms_controller" in robot.trajectories

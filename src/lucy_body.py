@@ -8,6 +8,7 @@ import roslibpy
 CLIENT_ID = "yoga_coach"
 HEARTBEAT_PERIOD_SEC = 1.0
 LUCY_WAIT_SEC = 120.0
+CONTROLLER_REFRESH_SEC = 2.0
 EYE_LED_COUNT = 12
 TRAJECTORY_CONTROLLER = "joint_trajectory_controller/JointTrajectoryController"
 
@@ -46,11 +47,10 @@ class LucyBody:
         self.positions: dict[str, float] = {}
         self.ros_topic("/joint_states", "sensor_msgs/msg/JointState").subscribe(self._on_joint_states)
         self.owners = controller_joints(self.wait_for_controllers())
-        self.commands = {joint: 0.0 for joint in self.owners}
-        self.trajectories = {
-            name: self.ros_topic(f"/{name}/joint_trajectory", "trajectory_msgs/msg/JointTrajectory")
-            for name in set(self.owners.values())
-        }
+        self.commands: dict[str, float] = {}
+        self.trajectories = {}
+        self._bind_trajectories()
+        self.refreshed_at = time.monotonic()
         self.eye_leds = self.ros_topic("/eye_leds", "std_msgs/msg/UInt32MultiArray")
         self.heartbeat = self.ros_topic("/lucy/client_heartbeat", "std_msgs/msg/String")
         self.active_client = None
@@ -139,12 +139,28 @@ class LucyBody:
         if blocking:
             time.sleep(duration_ms / 1000)
 
+    def _bind_trajectories(self) -> None:
+        for name in set(self.owners.values()) - set(self.trajectories):
+            self.trajectories[name] = self.ros_topic(f"/{name}/joint_trajectory", "trajectory_msgs/msg/JointTrajectory")
+
+    def _refresh_controllers(self) -> None:
+        if time.monotonic() - self.refreshed_at < CONTROLLER_REFRESH_SEC:
+            return
+        self.refreshed_at = time.monotonic()
+        try:
+            self.owners = controller_joints(self.list_controllers())
+        except Exception:
+            return
+        self._bind_trajectories()
+
     def move_joints(self, targets: dict[str, float], duration_ms: float) -> None:
+        if any(joint not in self.owners for joint in targets):
+            self._refresh_controllers()
         moved = {joint: value for joint, value in targets.items() if joint in self.owners}
         self.commands.update(moved)
         for controller in {self.owners[joint] for joint in moved}:
             joints = [joint for joint, owner in self.owners.items() if owner == controller]
-            positions = [self.commands[joint] for joint in joints]
+            positions = [self.commands.get(joint, self.positions.get(joint, 0.0)) for joint in joints]
             self.trajectories[controller].publish(roslibpy.Message(trajectory(joints, positions, duration_ms)))
 
     def stand_straight(self, duration_ms: float = 1000) -> None:
