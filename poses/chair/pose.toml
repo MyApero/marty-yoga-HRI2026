@@ -56,3 +56,25 @@ r_arm_wrist_flex = -2
 r_arm_elbow_flex = -74
 r_arm_shoulder_lift = 68
 r_arm_shoulder_pan = 5
+
+# Degrees; checked with forward kinematics: feet flat and level, inside the joint limits.
+[unitree_g1_urdf]
+left_ankle_pitch_joint = -35
+left_ankle_roll_joint = 0
+left_elbow_joint = 90
+left_hip_pitch_joint = -45
+left_hip_roll_joint = 0
+left_hip_yaw_joint = 0
+left_knee_joint = 80
+left_shoulder_pitch_joint = -170
+left_shoulder_roll_joint = 8
+right_ankle_pitch_joint = -35
+right_ankle_roll_joint = 0
+right_elbow_joint = 90
+right_hip_pitch_joint = -45
+right_hip_roll_joint = 0
+right_hip_yaw_joint = 0
+right_knee_joint = 80
+right_shoulder_pitch_joint = -170
+right_shoulder_roll_joint = -8
+waist_roll_joint = 0
