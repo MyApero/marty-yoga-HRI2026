@@ -7,6 +7,7 @@ import roslibpy
 
 CLIENT_ID = "yoga_coach"
 HEARTBEAT_PERIOD_SEC = 1.0
+LUCY_WAIT_SEC = 120.0
 EYE_LED_COUNT = 12
 TRAJECTORY_CONTROLLER = "joint_trajectory_controller/JointTrajectoryController"
 
@@ -40,12 +41,11 @@ class LucyBody:
     def __init__(self, url: str, joint_map: dict, ros=None):
         address = urlparse(url)
         self.ros = ros or roslibpy.Ros(host=address.hostname, port=address.port or 9090)
-        if not self.ros.is_connected:
-            self.ros.run(timeout=5)
+        self._connect()
         self.joint_map = joint_map
         self.positions: dict[str, float] = {}
         self.ros_topic("/joint_states", "sensor_msgs/msg/JointState").subscribe(self._on_joint_states)
-        self.owners = controller_joints(self.list_controllers())
+        self.owners = controller_joints(self.wait_for_controllers())
         self.commands = {joint: 0.0 for joint in self.owners}
         self.trajectories = {
             name: self.ros_topic(f"/{name}/joint_trajectory", "trajectory_msgs/msg/JointTrajectory")
@@ -53,8 +53,42 @@ class LucyBody:
         }
         self.eye_leds = self.ros_topic("/eye_leds", "std_msgs/msg/UInt32MultiArray")
         self.heartbeat = self.ros_topic("/lucy/client_heartbeat", "std_msgs/msg/String")
+        self.active_client = None
+        self.ros_topic("/lucy/active_client", "std_msgs/msg/String").subscribe(self._on_active_client)
         threading.Thread(target=self._beat, daemon=True).start()
         self.take_control()
+
+    def _connect(self) -> None:
+        try:
+            if not self.ros.is_connected:
+                self.ros.run(timeout=5)
+        except Exception:
+            pass
+        self._wait(lambda: self.ros.is_connected, "Lucy's rosbridge")
+
+    def wait_for_controllers(self) -> list[dict]:
+        found = []
+
+        def ready():
+            try:
+                found[:] = self.list_controllers()
+            except Exception:
+                return False
+            return bool(controller_joints(found))
+
+        self._wait(ready, "Lucy's controllers")
+        return found
+
+    def _wait(self, ready, what: str) -> None:
+        deadline = time.monotonic() + LUCY_WAIT_SEC
+        announced = False
+        while not ready():
+            if time.monotonic() > deadline:
+                raise TimeoutError(f"{what} not ready after {LUCY_WAIT_SEC:.0f} s")
+            if not announced:
+                print(f"Waiting for {what}...")
+                announced = True
+            time.sleep(1)
 
     def ros_topic(self, name: str, message_type: str):
         return roslibpy.Topic(self.ros, name, message_type)
@@ -78,10 +112,20 @@ class LucyBody:
         if not response.get("success"):
             print(f"Lucy kept control elsewhere: {response.get('message')}")
 
+    def _on_active_client(self, message: dict) -> None:
+        self.active_client = message["data"]
+
     def _beat(self) -> None:
-        while self.ros.is_connected:
-            self.heartbeat.publish(roslibpy.Message({"data": CLIENT_ID}))
+        while True:
+            self._beat_once()
             time.sleep(HEARTBEAT_PERIOD_SEC)
+
+    def _beat_once(self) -> None:
+        if not self.ros.is_connected:
+            return
+        self.heartbeat.publish(roslibpy.Message({"data": CLIENT_ID}))
+        if self.active_client == "":
+            self.take_control()
 
     def _on_joint_states(self, message: dict) -> None:
         self.positions.update(zip(message["name"], message["position"]))

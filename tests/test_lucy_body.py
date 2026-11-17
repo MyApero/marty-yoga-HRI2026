@@ -184,3 +184,25 @@ def test_the_coach_still_moves_the_robot_when_lucy_refuses_control():
     robot = Unanswered({"left arm": [{"joint": "l_arm", "scale": 1.0}]})
     robot.move_joint("left arm", 10, 100)
     assert robot.topics["/arms_controller/joint_trajectory"].sent
+
+
+def test_the_coach_waits_for_lucy_controllers_that_are_still_starting():
+    class Starting(FakeRobot):
+        answers = [[], CONTROLLERS]
+
+        def list_controllers(self):
+            return self.answers.pop(0) if len(self.answers) > 1 else self.answers[0]
+
+    robot = Starting({"left arm": [{"joint": "l_arm", "scale": 1.0}]})
+    assert robot.owners["l_arm"] == "arms_controller"
+
+
+def test_the_coach_takes_control_again_when_nobody_holds_it():
+    robot = FakeRobot({})
+    calls = len(robot.service_calls)
+    robot.topics["/lucy/active_client"].callback({"data": "cp_panel"})
+    robot._beat_once()
+    assert len(robot.service_calls) == calls
+    robot.topics["/lucy/active_client"].callback({"data": ""})
+    robot._beat_once()
+    assert robot.service_calls[-1] == ("/lucy/control", {"client_id": "yoga_coach", "acquire": True})
