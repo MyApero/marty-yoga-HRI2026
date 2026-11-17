@@ -1,9 +1,12 @@
 import math
+import threading
 import time
 from urllib.parse import urlparse
 
 import roslibpy
 
+CLIENT_ID = "yoga_coach"
+HEARTBEAT_PERIOD_SEC = 1.0
 EYE_LED_COUNT = 12
 TRAJECTORY_CONTROLLER = "joint_trajectory_controller/JointTrajectoryController"
 
@@ -49,15 +52,32 @@ class LucyBody:
             for name in set(self.owners.values())
         }
         self.eye_leds = self.ros_topic("/eye_leds", "std_msgs/msg/UInt32MultiArray")
+        self.heartbeat = self.ros_topic("/lucy/client_heartbeat", "std_msgs/msg/String")
+        threading.Thread(target=self._beat, daemon=True).start()
+        self.take_control()
 
     def ros_topic(self, name: str, message_type: str):
         return roslibpy.Topic(self.ros, name, message_type)
 
+    def call_service(self, name: str, service_type: str, request: dict) -> dict:
+        return roslibpy.Service(self.ros, name, service_type).call(roslibpy.ServiceRequest(request), timeout=5)
+
     def list_controllers(self) -> list[dict]:
-        service = roslibpy.Service(
-            self.ros, "/controller_manager/list_controllers", "controller_manager_msgs/srv/ListControllers"
+        return self.call_service(
+            "/controller_manager/list_controllers", "controller_manager_msgs/srv/ListControllers", {}
+        )["controller"]
+
+    def take_control(self) -> None:
+        response = self.call_service(
+            "/lucy/control", "lucy_msgs/srv/ClientControl", {"client_id": CLIENT_ID, "acquire": True}
         )
-        return service.call(roslibpy.ServiceRequest({}), timeout=5)["controller"]
+        if not response.get("success"):
+            print(f"Lucy kept control elsewhere: {response.get('message')}")
+
+    def _beat(self) -> None:
+        while self.ros.is_connected:
+            self.heartbeat.publish(roslibpy.Message({"data": CLIENT_ID}))
+            time.sleep(HEARTBEAT_PERIOD_SEC)
 
     def _on_joint_states(self, message: dict) -> None:
         self.positions.update(zip(message["name"], message["position"]))

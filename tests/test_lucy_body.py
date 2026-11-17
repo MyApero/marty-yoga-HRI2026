@@ -42,6 +42,10 @@ class FakeRobot(LucyCoachRobot):
     def list_controllers(self):
         return CONTROLLERS
 
+    def call_service(self, name, service_type, request):
+        self.service_calls = getattr(self, "service_calls", []) + [(name, request)]
+        return {"success": True}
+
 
 def settle(robot):
     deadline = time.time() + 2
@@ -164,3 +168,9 @@ def test_the_coach_switches_to_the_robot_lucy_runs():
     robot = Running()
     assert robot.robot_package == "fake_urdf"
     assert robot.targets("left arm", 10) == {"l_arm": pytest.approx(math.radians(10))}
+
+
+def test_the_coach_takes_control_so_the_panel_stops_sending_its_sliders():
+    robot = FakeRobot({})
+    assert ("/lucy/control", {"client_id": "yoga_coach", "acquire": True}) in robot.service_calls
+    assert robot.topics["/lucy/client_heartbeat"].sent[0] == {"data": "yoga_coach"}
