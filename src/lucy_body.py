@@ -1,9 +1,13 @@
+import base64
 import math
 import threading
 import time
 from urllib.parse import urlparse
 
+import cv2
 import roslibpy
+
+from .voice_leds import FPS as VOICE_FPS, band_levels, eye_frame
 
 CLIENT_ID = "yoga_coach"
 HEARTBEAT_PERIOD_SEC = 1.0
@@ -11,6 +15,9 @@ LUCY_WAIT_SEC = 120.0
 CONTROLLER_REFRESH_SEC = 2.0
 EYE_LED_COUNT = 12
 TRAJECTORY_CONTROLLER = "joint_trajectory_controller/JointTrajectoryController"
+STREAM_TOPIC = "/yoga_coach/image/compressed"
+STREAM_PERIOD_SEC = 1 / 30  # rosbridge carries ~30 fps of 960 px JPEGs on localhost, ~24 above that
+STREAM_WIDTH = 960
 
 
 def controller_joints(controllers: list[dict]) -> dict[str, str]:
@@ -52,7 +59,15 @@ class LucyBody:
         self._bind_trajectories()
         self.refreshed_at = time.monotonic()
         self.eye_leds = self.ros_topic("/eye_leds", "std_msgs/msg/UInt32MultiArray")
+        self.motion_interrupted = threading.Event()
+        self.eye_state = eye_colours([])
+        self.voice_take = 0
+        self.voice_until = 0.0
         self.heartbeat = self.ros_topic("/lucy/client_heartbeat", "std_msgs/msg/String")
+        self.stream = self.ros_topic(STREAM_TOPIC, "sensor_msgs/msg/CompressedImage")
+        self.stream_frame = None
+        self.stream_ready = threading.Condition()
+        threading.Thread(target=self._stream_forever, daemon=True).start()
         self.active_client = None
         self.ros_topic("/lucy/active_client", "std_msgs/msg/String").subscribe(self._on_active_client)
         threading.Thread(target=self._beat, daemon=True).start()
@@ -115,6 +130,9 @@ class LucyBody:
     def _on_active_client(self, message: dict) -> None:
         self.active_client = message["data"]
 
+    def has_control(self) -> bool:
+        return self.active_client == CLIENT_ID  # Lucy accepts anyone's commands; only send while in control
+
     def _beat(self) -> None:
         while True:
             self._beat_once()
@@ -127,6 +145,36 @@ class LucyBody:
         if self.active_client == "":
             self.take_control()
 
+    def publish_frame(self, frame) -> None:
+        # Only hands the frame over: encoding here cost the coach loop ~10 ms and halved it to 15 fps.
+        with self.stream_ready:
+            self.stream_frame = frame
+            self.stream_ready.notify()
+
+    def _stream_forever(self) -> None:
+        next_at = 0.0
+        while True:
+            time.sleep(max(0.0, next_at - time.monotonic()))
+            with self.stream_ready:
+                self.stream_ready.wait_for(lambda: self.stream_frame is not None)
+                frame, self.stream_frame = self.stream_frame, None
+            # Schedule from the last slot, not from now, so frame jitter does not erode the rate.
+            next_at = max(next_at + STREAM_PERIOD_SEC, time.monotonic() - STREAM_PERIOD_SEC)
+            if self.ros.is_connected:
+                try:
+                    self._publish_jpeg(frame)
+                except Exception as error:
+                    print(f"Lucy stream frame dropped: {error}")
+
+    def _publish_jpeg(self, frame) -> None:
+        scale = STREAM_WIDTH / frame.shape[1]
+        ok, jpeg = cv2.imencode(".jpg", cv2.resize(frame, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA))
+        if not ok:
+            return
+        wall = time.time()
+        header = {"stamp": {"sec": int(wall), "nanosec": int((wall % 1) * 1e9)}, "frame_id": CLIENT_ID}
+        self.stream.publish(roslibpy.Message({"header": header, "format": "jpeg", "data": base64.b64encode(jpeg).decode()}))
+
     def _on_joint_states(self, message: dict) -> None:
         self.positions.update(zip(message["name"], message["position"]))
 
@@ -137,7 +185,11 @@ class LucyBody:
     def move_joint(self, name: str, angle: float, duration_ms: float, blocking: bool = False) -> None:
         self.move_joints(self.targets(name, angle), duration_ms)
         if blocking:
-            time.sleep(duration_ms / 1000)
+            self.motion_interrupted.clear()
+            self.motion_interrupted.wait(duration_ms / 1000)
+
+    def interrupt_motion(self) -> None:
+        self.motion_interrupted.set()
 
     def _bind_trajectories(self) -> None:
         for name in set(self.owners.values()) - set(self.trajectories):
@@ -154,6 +206,8 @@ class LucyBody:
         self._bind_trajectories()
 
     def move_joints(self, targets: dict[str, float], duration_ms: float) -> None:
+        if not self.has_control():
+            return
         if any(joint not in self.owners for joint in targets):
             self._refresh_controllers()
         moved = {joint: value for joint, value in targets.items() if joint in self.owners}
@@ -174,7 +228,28 @@ class LucyBody:
         pass
 
     def disco_color_eyepicker(self, colours: list[str], add_on: str = "") -> None:
-        self.eye_leds.publish(roslibpy.Message({"data": eye_colours(colours)}))
+        self.eye_state = eye_colours(colours)
+        if time.monotonic() < self.voice_until or not self.has_control():
+            return  # the voice owns the eyes, or someone else has control; this state comes back later
+        self.eye_leds.publish(roslibpy.Message({"data": self.eye_state}))
+
+    def show_voice(self, audio, sample_rate: int, delay_s: float = 0.0) -> None:
+        frames = [eye_frame(row) for row in band_levels(audio, sample_rate)]
+        start = time.monotonic() + delay_s
+        self.voice_take += 1
+        self.voice_until = start + len(frames) / VOICE_FPS
+        threading.Thread(target=self._play_voice, args=(self.voice_take, frames, start), daemon=True).start()
+
+    def _play_voice(self, take: int, frames: list[list[int]], start: float) -> None:
+        for i, colours in enumerate(frames):
+            time.sleep(max(0.0, start + i / VOICE_FPS - time.monotonic()))
+            if take != self.voice_take:
+                return  # the next chunk took over
+            if self.has_control():
+                self.eye_leds.publish(roslibpy.Message({"data": colours}))
+        time.sleep(max(0.0, self.voice_until - time.monotonic()))
+        if take == self.voice_take and self.has_control():
+            self.eye_leds.publish(roslibpy.Message({"data": self.eye_state}))
 
     def disco_off(self, add_on: str = "") -> None:
         self.disco_color_eyepicker([])

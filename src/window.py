@@ -5,6 +5,32 @@ import time
 from src.mediapipe_operations import apply_film_effect
 from src.video_feedback import draw_skeleton
 
+SUBTITLE_FONT = cv2.FONT_HERSHEY_SIMPLEX
+SUBTITLE_MAX_LINES = 4
+SUBTITLE_MIN_SCALE = 0.8
+SUBTITLE_PADDING = 16
+
+
+def wrap_text(text, scale, thickness, max_width):
+    """Greedy word wrap measured with the subtitle font; a word wider than the line gets a line of its own."""
+    lines = []
+    for word in text.split():
+        candidate = f"{lines[-1]} {word}" if lines else word
+        if lines and cv2.getTextSize(candidate, SUBTITLE_FONT, scale, thickness)[0][0] <= max_width:
+            lines[-1] = candidate
+        else:
+            lines.append(word)
+    return lines
+
+
+def fit_subtitles(text, scale, thickness, max_width):
+    """The lines and scale that fit the whole sentence in the band, shrinking the font before cutting text."""
+    lines = wrap_text(text, scale, thickness, max_width)
+    while len(lines) > SUBTITLE_MAX_LINES and scale * 0.9 >= SUBTITLE_MIN_SCALE:
+        scale *= 0.9
+        lines = wrap_text(text, scale, thickness, max_width)
+    return lines[:SUBTITLE_MAX_LINES], scale
+
 
 class WindowRenderer:
     def __init__(self, config, voice, logger):
@@ -23,6 +49,8 @@ class WindowRenderer:
         )
         self.subtitle_font_scale = float(window_config.get("subtitle_font_scale", 1.0))
         self.subtitle_thickness = int(window_config.get("subtitle_thickness", 2))
+        self.subtitle_line_height = self._line_height(self.subtitle_font_scale)
+        self.subtitle_band_height = SUBTITLE_MAX_LINES * self.subtitle_line_height + 2 * SUBTITLE_PADDING
         self.side_panel_width = 0
         self._pose_preview_cache_key = None
         self._pose_preview_cache_image = None
@@ -39,26 +67,41 @@ class WindowRenderer:
     def filter_image(self, image):
         return apply_film_effect(image.numpy_view(), self.config["film_settings"])
 
+    def _line_height(self, scale):
+        (_, height), baseline = cv2.getTextSize("Ag", SUBTITLE_FONT, scale, self.subtitle_thickness)
+        return int((height + baseline) * 1.35)
+
     def add_side_panels(self, frame):
         frame_height, frame_width = frame.shape[:2]
         self.side_panel_width = 0
 
-        if not self.enable_portrait_side_panels or frame_height <= frame_width:
-            return frame
+        if self.enable_portrait_side_panels and frame_height > frame_width:
+            computed_panel_width = int(frame_width * float(self.side_panel_ratio))
+            self.side_panel_width = max(int(self.side_panel_min_width), computed_panel_width)
 
-        computed_panel_width = int(frame_width * float(self.side_panel_ratio))
-        panel_width = max(int(self.side_panel_min_width), computed_panel_width)
-        canvas = cv2.copyMakeBorder(
+        # Pose picture on the left, subtitles in a band below; no right panel, so the image stays
+        # near square and fits beside the robot in Lucy's STREAM.
+        return cv2.copyMakeBorder(
             frame,
             0,
+            self.subtitle_band_height,
+            self.side_panel_width,
             0,
-            panel_width,
-            panel_width,
             cv2.BORDER_CONSTANT,
             value=(0, 0, 0),
         )
-        self.side_panel_width = panel_width
-        return canvas
+
+    def draw_subtitles(self, frame, text):
+        width = frame.shape[1] - 2 * SUBTITLE_PADDING
+        lines, scale = fit_subtitles(text, self.subtitle_font_scale, self.subtitle_thickness, width)
+        line_height = self._line_height(scale)
+        top = frame.shape[0] - self.subtitle_band_height + SUBTITLE_PADDING
+        top += (SUBTITLE_MAX_LINES - len(lines)) * line_height // 2  # centre the block in the band
+        for i, line in enumerate(lines):
+            (line_width, height), _ = cv2.getTextSize(line, SUBTITLE_FONT, scale, self.subtitle_thickness)
+            x = (frame.shape[1] - line_width) // 2
+            y = top + i * line_height + (line_height + height) // 2
+            cv2.putText(frame, line, (x, y), SUBTITLE_FONT, scale, (255, 255, 255), self.subtitle_thickness)
 
     def process_image(
         self,
@@ -86,7 +129,7 @@ class WindowRenderer:
             detect_start = time.perf_counter()
             result = analyze_image(image)
             detect_ms = (time.perf_counter() - detect_start) * 1000.0
-            if result.pose_landmarks:
+            if result is not None and result.pose_landmarks:
                 frame_angles = draw_skeleton(
                     output_frame,
                     result.pose_landmarks,
@@ -143,35 +186,7 @@ class WindowRenderer:
     ):
         subtitles = self.voice.subtitles if self.voice else ""
         if subtitles:
-            sample_size, sample_baseline = cv2.getTextSize(
-                "Ag",
-                cv2.FONT_HERSHEY_SIMPLEX,
-                self.subtitle_font_scale,
-                self.subtitle_thickness,
-            )
-            text_height = sample_size[1]
-            bar_padding = 10
-            bar_top = frame.shape[0] - (text_height + sample_baseline + bar_padding * 2)
-            cv2.rectangle(
-                frame,
-                (5, bar_top),
-                (frame.shape[1] - 5, frame.shape[0] - 5),
-                (0, 0, 0),
-                -1,
-            )
-            # Remove "
-            subtitles_cleaned = subtitles.replace('"', "")
-            # Show only last 18 words
-            showed_text = " ".join(subtitles_cleaned.split()[-18:])
-            cv2.putText(
-                frame,
-                showed_text,
-                (10, frame.shape[0] - sample_baseline - bar_padding),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                self.subtitle_font_scale,
-                (255, 255, 255),
-                self.subtitle_thickness,
-            )
+            self.draw_subtitles(frame, subtitles.replace('"', ""))
 
         if interaction_state_text:
             state_label = f"State: {interaction_state_text}"
@@ -187,9 +202,9 @@ class WindowRenderer:
             text_width, text_height = text_size
             margin = 10
 
-            # Keep state text above the subtitle area.
+            # Bottom right of the camera image, just above the subtitle band.
             text_x = frame.shape[1] - text_width - margin
-            text_y = frame.shape[0] - 48
+            text_y = frame.shape[0] - self.subtitle_band_height - 20
 
             rect_top_left = (text_x - 8, text_y - text_height - 6)
             rect_bottom_right = (text_x + text_width + 8, text_y + baseline + 6)

@@ -33,22 +33,34 @@ Eyes = 0
 
 # reachy_yoga poses.json "mountain", degrees
 [reachy_mini_so101_humanoid_urdf]
-l_leg_wrist_flex = -2
+# From Lucy's reachy_montain pose (radians), in whole degrees.
+right_antenna = 0
+left_antenna = 0
+yaw_body = 0
+head_yaw = 0
+head_pitch = 0
+head_roll = 0
+l_arm_wrist_roll = 0
+l_arm_wrist_flex = 0
+l_arm_elbow_flex = -90
+l_arm_shoulder_lift = 91
+l_arm_shoulder_pan = 0
+r_arm_wrist_roll = 0
+r_arm_wrist_flex = 0
+r_arm_elbow_flex = -90
+r_arm_shoulder_lift = 89
+r_arm_shoulder_pan = 0
+l_leg_wrist_roll = 0
+l_leg_wrist_flex = 0
 l_leg_elbow_flex = -74
 l_leg_shoulder_lift = -14
-l_arm_wrist_flex = -2
-l_arm_elbow_flex = -74
-l_arm_shoulder_lift = -96
-l_arm_shoulder_pan = -4
-r_leg_wrist_flex = -2
+l_leg_shoulder_pan = 0
+r_leg_wrist_roll = 0
+r_leg_wrist_flex = 0
 r_leg_elbow_flex = -74
 r_leg_shoulder_lift = -14
-r_arm_wrist_flex = -2
-r_arm_elbow_flex = -74
-r_arm_shoulder_lift = -96
-r_arm_shoulder_pan = -4
+r_leg_shoulder_pan = 0
 
-# Degrees; checked with forward kinematics: feet flat and level, inside the joint limits.
 [unitree_g1_urdf]
 left_ankle_pitch_joint = 0
 left_ankle_roll_joint = 0

@@ -3,6 +3,8 @@ import toml
 from .lucy_body import LucyBody, controller_joints
 from .coach_behaviour import CoachBehaviour
 
+DEFAULT_POSE_FILE = "poses/default/pose.toml"
+
 
 def matching_robot(robots: dict, joints: set[str], preferred: str | None = None) -> str:
     def fit(name):
@@ -26,6 +28,7 @@ class LucyCoachRobot(CoachBehaviour, LucyBody):
             self.robot_package = matching_robot(robots, set(self.owners), robot_package)
             self.joint_map = robots[self.robot_package]
             print(f"Coaching {self.robot_package} through Lucy")
+            self.load_and_do_pose(DEFAULT_POSE_FILE, 1000)
 
     def _wait_for_a_whole_robot(self, robots: dict) -> None:
         def whole():

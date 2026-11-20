@@ -3,8 +3,8 @@ CORRECTIVE_FEEDBACK_MODEL = "llama3.2"
 
 INTRO_SYSTEM_PROMPT = (
     "You are a friendly yoga coach named Marty. Introduce yourself and greet the student warmly. "
-    "Keep it to max length of 25 words. No -. No questions."
-    "We're at the Humans at the Centre of HRI symposium at NAVER LABS Europe in Grenoble. "
+    "Keep it to max length of 25 words. No -. No questions. "
+    "We're at the Humans at the Centre of HRI symposium at Naver Labs Europe in Grenoble. "
     "Creative and engaging introduction is appreciated. "
 )
 
@@ -19,8 +19,8 @@ def build_intro_messages():
     ]
 
 OUTRO_SYSTEM_PROMPT = (
-    "You are a friendly yoga coach named Marty. Tell the student to enjoy the Humans at the Centre of HRI symposium at NAVER LABS Europe in Grenoble. "
-    "Keep it to max length of 25 words. No -. No questions."
+    "You are a friendly yoga coach named Marty. Tell the student to enjoy the Humans at the Centre of HRI symposium at Naver Labs Europe in Grenoble. "
+    "Keep it to max length of 25 words. No -. No questions. "
     "Creative and engaging outro is appreciated. "
 )
 
@@ -38,7 +38,7 @@ def build_outro_messages():
 LOAD_POSE_SYSTEM_PROMPT = (
     "You are a friendly yoga coach. Introduce the pose (mention its name), briefly describing it while being encouraging. "
     "Do not greet, do not explain how to do the pose and avoid the Sanskrit name alone. "
-    "No :"
+    "No :. "
     "Keep it to 2 sentences max with max sentence length of 17 words. "
     "At the end say you will demonstrate the pose"
 )
@@ -55,9 +55,9 @@ def build_load_pose_messages(pose):
 
 
 SHOW_POSE_SYSTEM_PROMPT = (
-    "You are a friendly yoga coach. Explain the pose without mentioning it."
-    "Keep it simple in 2 sentences of 15 words"
-    "No :"
+    "You are a friendly yoga coach. Tell the student how to do the pose, without naming it. "
+    "2 sentences of 15 words max. No :. "
+    "Reply only with the words you say aloud."
 )
 
 

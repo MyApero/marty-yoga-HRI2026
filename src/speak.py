@@ -28,6 +28,7 @@ VOICE_NAME = "am_michael"
 VOICE_SPEED = 1.0
 SAMPLE_RATE = 24000
 AUDIO_CHUNK_MARGIN_S = 6.0
+PLAY_SLICE_SAMPLES = SAMPLE_RATE // 5  # written 0.2 s at a time so stop() can cut a sentence short
 
 
 COUNTDOWN_FILE_PATH = "assets/countdown.wav"
@@ -45,7 +46,11 @@ class Speak:
         analyze_ongoing_frame,
         can_i_speak=lambda: True,
         audio_chunk_margin_seconds=AUDIO_CHUNK_MARGIN_S,
+        show_voice=None,
+        on_play=None,
     ):
+        self.show_voice = show_voice
+        self.on_play = on_play
         self.move_marty_callback = move_marty_callback
         self.move_marty_enabled = move_marty_enabled
         self.move_marty_type_corrective = None
@@ -97,7 +102,7 @@ class Speak:
 
     # TODO: add focused tests for memory behavior.
     def save_to_memory(self, text):
-        if text == COUNTDOWN_SUBTITLES:
+        if not text or not text.strip() or text == COUNTDOWN_SUBTITLES:
             return
         with self.lock:
             self.memory.append({"role": "assistant", "content": text})
@@ -201,7 +206,7 @@ class Speak:
                         self.subtitles = chunk_sub
                         self.save_to_memory(self.subtitles)
 
-                    self._play_chunk_wrapper(chunk_data)
+                    self._play_chunk_wrapper(chunk_data, epoch)
 
                 buffer_duration = 0.0
                 self.subtitles = ""
@@ -290,11 +295,11 @@ class Speak:
 
                 dur = len(chunk_data) / SAMPLE_RATE
                 buffer_duration -= dur
-                self._play_chunk_wrapper(chunk_data)
+                self._play_chunk_wrapper(chunk_data, epoch)
 
             self.audio_queue.task_done()
 
-    def _play_chunk_wrapper(self, chunk):
+    def _play_chunk_wrapper(self, chunk, epoch):
         if self.shutdown_event.is_set():
             return
         if len(chunk) == 0:
@@ -311,9 +316,9 @@ class Speak:
                 raise
         while not self.can_i_speak() and not self.shutdown_event.is_set():
             time.sleep(0.1)
-        if self.shutdown_event.is_set():
-            return
-        self._play_chunk(chunk)
+        if self.shutdown_event.is_set() or self.current_epoch != epoch:
+            return  # stopped while this chunk waited for its turn
+        self._play_chunk(chunk, epoch)
 
     def _drain_queue_safely(self):
         while not self.audio_queue.empty():
@@ -329,7 +334,9 @@ class Speak:
             except queue.Empty:
                 break
 
-    def _play_chunk(self, chunk):
+    def _play_chunk(self, chunk, epoch):
+        if self.current_epoch != epoch:
+            return
         duration = len(chunk) / SAMPLE_RATE
         if self.move_marty_enabled:
             if self.move_marty_callback and self.move_marty_type_corrective is None:
@@ -343,8 +350,23 @@ class Speak:
         with self.stream_lock:
             if self.shutdown_event.is_set():
                 return
+            if self.on_play:
+                self.on_play()
+            if self.show_voice:
+                # stream.latency counts a full write buffer; only its queued part delays this chunk.
+                heard_in = self.stream.latency - self.stream.write_available / SAMPLE_RATE
+                try:
+                    self.show_voice(chunk, SAMPLE_RATE, heard_in)
+                except Exception as e:
+                    print(f"Voice LEDs error: {e}", file=sys.stderr)
             try:
-                self.stream.write(chunk)
+                for start in range(0, len(chunk), PLAY_SLICE_SAMPLES):
+                    if self.current_epoch != epoch or self.shutdown_event.is_set():
+                        if self.show_voice:
+                            self.show_voice(np.zeros(0, np.float32), SAMPLE_RATE)  # the eyes stop with the voice
+                        return
+                    if self.stream.write(chunk[start : start + PLAY_SLICE_SAMPLES]):
+                        print("Audio underflow: playback ran dry (heard as a crackle or gap)", file=sys.stderr)
             except sd.PortAudioError:
                 # During shutdown, PortAudio can reject writes while the stream is being closed.
                 if self.shutdown_event.is_set():
@@ -531,6 +553,18 @@ class Speak:
         drain(self.request_queue)
         drain(self.text_queue)
         drain(self.audio_queue)
+
+    def stop(self):
+        """Drop everything queued and cut the sentence being played, including the audio already buffered."""
+        self.empty_queues()
+        self.subtitles = ""
+        with self.stream_lock:
+            try:
+                if self.stream.active:
+                    self.stream.abort()  # discards PortAudio's ~0.7 s of queued audio; stop() would play it out
+                    self.stream.start()
+            except sd.PortAudioError as e:
+                print(f"Audio stream reset failed: {e}", file=sys.stderr)
 
     def shutdown(self):
         if self.shutdown_event.is_set():

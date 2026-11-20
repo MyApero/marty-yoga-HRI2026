@@ -24,8 +24,9 @@ eyes = [{ joint = "left_antenna", scale = 1.0 }, { joint = "right_antenna", scal
 "left knee" = [{ joint = "l_leg_elbow_flex", scale = 0.5, offset = -73.8 }]
 "right knee" = [{ joint = "r_leg_elbow_flex", scale = 0.5, offset = -73.8 }]
 [unitree_g1_urdf]
-"left arm" = [{ joint = "left_shoulder_roll_joint", scale = 1.0 }]
-"right arm" = [{ joint = "right_shoulder_roll_joint", scale = -1.0 }]
+# Arm gestures swing around unitree_default's shoulder roll (poses/default/pose.toml).
+"left arm" = [{ joint = "left_shoulder_roll_joint", scale = 1.0, offset = 10 }]
+"right arm" = [{ joint = "right_shoulder_roll_joint", scale = -1.0, offset = -10 }]
 "left hip" = [{ joint = "left_hip_pitch_joint", scale = 0.5 }]
 "right hip" = [{ joint = "right_hip_pitch_joint", scale = 0.5 }]
 "left twist" = [{ joint = "left_hip_yaw_joint", scale = 0.5 }]

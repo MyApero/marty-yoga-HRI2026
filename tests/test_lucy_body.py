@@ -35,6 +35,7 @@ class FakeRobot(LucyCoachRobot):
     def __init__(self, joint_map):
         self.topics = {}
         super().__init__("ws://localhost:9090", "fake_urdf", joint_map, ros=FakeRos())
+        self.topics["/lucy/active_client"].callback({"data": "yoga_coach"})  # the coach holds control
 
     def ros_topic(self, name, message_type):
         return self.topics.setdefault(name, FakeTopic(name))
@@ -246,3 +247,27 @@ def test_the_coach_waits_until_lucy_has_brought_up_every_controller_of_the_robot
     assert robot.robot_package == "fake_urdf"
     assert robot.owners["l_arm"] == "arms_controller"
     assert "arms_controller" in robot.trajectories
+
+
+def test_nothing_is_sent_while_another_client_has_control(robot):
+    robot.topics["/lucy/active_client"].callback({"data": "cp_panel"})
+    robot.move_joints({"l_arm": 0.5}, 100)
+    robot.disco_color_eyepicker(["#ff0000"])
+    assert robot.topics["/arms_controller/joint_trajectory"].sent == []
+    assert robot.topics["/eye_leds"].sent == []
+
+
+
+def test_g1_arm_gestures_rest_on_its_default_pose():
+    import toml
+
+    from src.lucy_robot import DEFAULT_POSE_FILE
+
+    g1 = toml.load("lucy_robots.toml")["unitree_g1_urdf"]
+    default = toml.load(DEFAULT_POSE_FILE)["unitree_g1_urdf"]
+    robot = FakeRobot(g1)
+    robot.robot_package = "unitree_g1_urdf"
+
+    assert robot.targets("left arm", 0) == {"left_shoulder_roll_joint": pytest.approx(math.radians(default["left_shoulder_roll_joint"]))}
+    assert robot.targets("right arm", 0) == {"right_shoulder_roll_joint": pytest.approx(math.radians(default["right_shoulder_roll_joint"]))}
+    assert robot.load_pose(DEFAULT_POSE_FILE)["left_elbow_joint"] == 88

@@ -45,6 +45,13 @@ class CoachBehaviour:
         self.queue.put((DEFAULT_ANGLES, 1000, False))
         self.is_empty = False
 
+    def stop_motion(self):
+        """Drop every queued gesture and LED step, and cut short the wait of the move in progress."""
+        with self.queue.mutex:
+            self.queue.queue.clear()
+        if hasattr(self, "interrupt_motion"):
+            self.interrupt_motion()
+
     def init_generated_text(self, generated_text: callable):
         self.generated_text = generated_text
 

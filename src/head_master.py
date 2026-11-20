@@ -3,7 +3,9 @@ import os
 import time
 import logging
 import sys
+import queue
 import random
+import threading
 import toml
 from src.utils import loading_print, get_color_gradient
 
@@ -12,6 +14,7 @@ import mediapipe as mp
 
 from src.utils import load_toml
 from src.mediapipe_operations import setup_landmarker
+from src.live_pose import LivePose
 from src.feedback_preprocess import get_feedbacks_from_run
 from src.feedback_engine import FeedbackEngine
 from src.session_state import SessionState
@@ -54,6 +57,8 @@ MEDIAPIPE_KEY_MAP = {
 }
 RANDOM_DEMO_POOL = ["chair", "crescent_moon", "left_warrior1", "left_warrior2"]
 RANDOM_DEMO_COUNT = 1
+# Robots limited to the poses made for them in Lucy (unitree_warrior2, reachy_montain, reachy_warrior2).
+ROBOT_POSES = {"unitree_g1_urdf": ["right_warrior2"], "reachy_mini_so101_humanoid_urdf": ["mountain", "left_warrior2"]}
 MARTY_ONLY_POSE_DURATION_S = 5
 MEDIAPIPE_ONLY_POSE_DURATION_S = 1500
 
@@ -64,6 +69,18 @@ SEND_CORRECTION_THRESHOLD = (
     0.7  # the lower, the higher the chance of sending correction
 )
 LED_MARTY_UPDATE_S = 0.8
+PLUGIN_ID = "yoga_coach"
+SPEAKING_SESSIONS = {"demo", "full_session", "intro"}  # they open with Marty talking, so the spinner has an end
+STOP_SETTLE_S = 2.0  # the rest pose takes 2 s; the Stop button keeps its spinner until Marty is there
+DEMO_PLUGIN_ID = "yoga_demo"
+
+
+class SessionStopped(Exception):
+    """Raised from the window loop when Stop is pressed, so a session unwinds from wherever it is."""
+
+
+def pose_label(pose: str) -> str:
+    return pose.replace("_", " ").title()
 
 
 class InteractionState(Enum):
@@ -99,10 +116,17 @@ class HeadMaster:
         self.marty = self.init_marty() if enable_marty else None
         self.session = SessionState()
         self.interaction_state = InteractionState.IDLE
+        self.starting = False
         self.voice = self.init_voice(enable_voice=enable_voice)
         self.window_renderer = WindowRenderer(self.config, self.voice, self.logger)
         if self.marty:
             self.marty.init_generated_text(self.voice.generated_text_callback)
+        self.stop_requested = threading.Event()
+        self.plugin_commands = queue.Queue()
+        self.session_label = None
+        self.stopping = False
+        self.plugins = self.init_plugins()
+        self.mjpeg = self.init_mjpeg()  # TEMPORARY: quick MJPEG server, deleted with src/mjpeg_server.py
         self.pose_duration = pose_duration  # seconds
         self.poses = {
             pose_name: load_toml(os.path.join(POSES_FOLDER, pose_name, "pose.toml"))
@@ -113,6 +137,8 @@ class HeadMaster:
         self.ongoing_mistakes = {}
 
         self.landmarker = setup_landmarker(self.config["model_path"])
+        self.live_pose = LivePose(self.config["model_path"])
+        self.pose_is_new = False
 
         self.max_error_margin = self.config["feedback"]["max_error_margin"]
         self.feedback_engine = FeedbackEngine(
@@ -176,6 +202,194 @@ class HeadMaster:
             print(f"Failed to initialize Marty: {e}", file=sys.stderr)
             return None
 
+    def init_mjpeg(self):
+        # TEMPORARY: quick MJPEG server for a latency comparison, deleted with src/mjpeg_server.py.
+        from src.mjpeg_server import MjpegServer
+
+        try:
+            return MjpegServer()
+        except OSError as error:
+            print(f"MJPEG server not started: {error}", file=sys.stderr)
+            return None
+
+    def init_plugins(self):
+        ros = getattr(self.marty, "ros", None)
+        if ros is None:
+            return []
+        from src.lucy_plugin import LucyPlugin
+
+        return [
+            LucyPlugin(ros, PLUGIN_ID, self.plugin_manifest, self.on_plugin_action),
+            LucyPlugin(ros, DEMO_PLUGIN_ID, self.demo_manifest, self.on_plugin_action),
+        ]
+
+    def plugin_manifest(self):
+        busy = self.session_label is not None
+        if self.stopping:
+            return {
+                "label": "Yoga coach",
+                "caption": "YOGA",
+                "icon": "loading",
+                "status": "Stopping",
+                "active": False,
+                "actions": [{"id": "stop", "label": "Stopping", "disabled": True}],
+            }
+        poses = [{"id": pose, "label": pose_label(pose)} for pose in self.supported_poses()]
+        counts = range(1, len(self.demo_pool()) + 1)
+        return {
+            "label": "Yoga coach",
+            "caption": "YOGA",
+            "icon": "pose",
+            "status": self.session_label or "Ready",
+            "active": busy,
+            "actions": [
+                {
+                    "id": "full_session",
+                    "label": "Full session",
+                    "disabled": busy,
+                    "options": [{"id": str(n), "label": f"{n} pose{'s' if n > 1 else ''}"} for n in counts],
+                },
+                {"id": "coach", "label": "Coach one pose", "disabled": busy, "options": poses},
+                {"id": "demonstrate", "label": "Marty demonstrates a pose", "disabled": busy, "options": poses},
+                {"id": "intro", "label": "Intro only", "disabled": busy},
+                {"id": "stop", "label": "Stop", "danger": True, "disabled": not busy},
+            ],
+        }
+
+    def demo_manifest(self):
+        busy = self.session_label is not None
+        if busy and self.starting:
+            return {
+                "label": "Yoga demo",
+                "caption": "STOP",
+                "icon": "loading",
+                "status": f"Starting: {self.session_label}, click to stop",
+                "active": True,
+                "actions": [{"id": "stop", "label": "Stop", "danger": True}],
+            }
+        if self.stopping:
+            return {
+                "label": "Yoga demo",
+                "caption": "STOPPING",
+                "icon": "loading",
+                "status": "Stopping",
+                "active": False,
+                "actions": [{"id": "stop", "label": "Stopping", "disabled": True}],
+            }
+        return {
+            "label": "Yoga demo",
+            "caption": "STOP" if busy else "DEMO",
+            "icon": "stop" if busy else "play",
+            "status": f"{self.session_label}, click to stop" if busy else "Click to play the demo",
+            "active": busy,
+            "actions": [{"id": "stop", "label": "Stop", "danger": True} if busy else {"id": "demo", "label": "Demo"}],
+        }
+
+    def on_plugin_action(self, action, option):
+        # ROS thread: Stop takes effect at once, the rest waits for the main loop (OpenCV lives there).
+        if action == "stop":
+            if self.session_label is not None and not self.stopping:
+                self.stopping = True
+                self.stop_requested.set()
+                self.announce()
+            return
+        if self.session_label is not None or self.stopping or not self.plugin_commands.empty():
+            return  # a double click must not queue a second session that starts right after Stop
+        self.plugin_commands.put((action, option))
+
+    def announce(self):
+        for plugin in self.plugins:
+            plugin.announce()
+
+    def supported_poses(self):
+        return ROBOT_POSES.get(getattr(self.marty, "robot_package", None), list(EXERCISE_KEY_MAP.values()))
+
+    def demo_pool(self):
+        return ROBOT_POSES.get(getattr(self.marty, "robot_package", None), RANDOM_DEMO_POOL)
+
+    def session_for(self, action, option=None):
+        """(status label, run) for a session request, or None when the request names no session."""
+        pool = self.demo_pool()
+        if action == "intro":
+            return "Intro", self.intro
+        if action == "demo":
+            poses = random.sample(pool, min(RANDOM_DEMO_COUNT, len(pool)))
+            return "Demo", lambda: self.run_demo(poses=poses)
+        if action == "full_session" and option and option.isdigit():
+            count = int(option)
+            if 1 <= count <= len(pool):
+                poses = random.sample(pool, count)
+                return f"Full session ({count} pose{'s' if count > 1 else ''})", lambda: self.run_demo(poses=poses)
+        if option in self.supported_poses():
+            if action == "coach":
+                return f"Coaching {pose_label(option)}", lambda: self.do_mediapipe_pose_only(option)
+            if action == "demonstrate":
+                return f"Demonstrating {pose_label(option)}", lambda: self.do_marty_pose_only(option)
+        return None
+
+    def start(self, action, option=None):
+        """Run one session to its end or until Stop; the keyboard and Lucy's plugin menu both land here."""
+        session = self.session_for(action, option)
+        if session is None:
+            return
+        self.session_label, run = session
+        self.starting = self.voice is not None and action in SPEAKING_SESSIONS
+        self.stop_requested.clear()
+        self.announce()
+        try:
+            run()
+        except SessionStopped:
+            self.stop_session()
+        finally:
+            self.session_label = None
+            self.starting = False
+            self.stopping = False
+            self.stop_requested.clear()
+            self.announce()
+
+    def on_voice_played(self):
+        # Player thread: the first sound of a session ends the start spinner.
+        if self.starting:
+            self.starting = False
+            self.announce()
+
+    def stop_session(self):
+        self.starting = False
+        self.stopping = True
+        with self.plugin_commands.mutex:
+            self.plugin_commands.queue.clear()
+        self.stop_requested.clear()
+        self.announce()
+        if self.voice:
+            self.voice.stop()
+            self.voice.move_marty_enabled = True
+            self.voice.move_marty_type_corrective = None
+        if self.marty:
+            self.marty.stop_motion()
+            self.marty.disco_off()
+            self.reset_marty_pos()
+        self.session.pose_ended = True
+        self.session.is_pose_ending = False
+        self.set_interaction_state(InteractionState.IDLE)
+        if self.marty:
+            self.settle(STOP_SETTLE_S)
+
+    def settle(self, seconds):
+        deadline = time.time() + seconds
+        while time.time() < deadline:
+            self.update_window(show_landmarks=False)
+            cv2.waitKey(1)
+
+    def run_plugin_command(self):
+        try:
+            action, option = self.plugin_commands.get_nowait()
+        except queue.Empty:
+            return
+        self.start(action, option)
+
+    def intro(self):
+        self.wait_for_event(self.voice.intro())
+
     def init_voice(self, enable_voice=True):
         if not enable_voice:
             return None
@@ -202,6 +416,8 @@ class HeadMaster:
             can_i_speak=lambda: (
                 self.session.pose_ended or not self.session.is_pose_ending
             ),
+            show_voice=getattr(self.marty, "show_voice", None),
+            on_play=self.on_voice_played,
         )
 
     def update_ongoing_frame(self, elapsed):
@@ -234,6 +450,8 @@ class HeadMaster:
         elapsed=0.0,
         enable_corrective_feedback=True,
     ):
+        if self.stop_requested.is_set():
+            raise SessionStopped()
         self.process_camera_image(show_landmarks, timer_text, elapsed)
         if enable_corrective_feedback and elapsed > MARGIN_BEFORE_CORRECTION_FEEDBACK_S:
             self.update_correction_feedback()
@@ -275,6 +493,10 @@ class HeadMaster:
 
         show_start = time.perf_counter()
         self.window_renderer.show(frame)
+        if hasattr(self.marty, "publish_frame"):
+            self.marty.publish_frame(frame)
+        if self.mjpeg:  # TEMPORARY: quick MJPEG server, deleted with src/mjpeg_server.py
+            self.mjpeg.push(frame)
         self.last_show_ms = (time.perf_counter() - show_start) * 1000.0
         self.session.name_files = None
 
@@ -306,7 +528,7 @@ class HeadMaster:
             y += line_height
 
     def process_image(
-        self, image, show_landmarks=False, timer_text="", elapsed=0.0, show_state=False
+        self, image, show_landmarks=False, timer_text="", elapsed=0.0, show_state=False, analyze=None
     ):
         pose_data = (
             self.poses.get(self.session.pose_name) if self.session.pose_name else None
@@ -327,19 +549,24 @@ class HeadMaster:
             interaction_state_text=interaction_state_text,
             name_file=self.session.name_files,
             marty=self.marty,
-            analyze_image=self.analyze_image,
+            analyze_image=analyze or self.analyze_image,
         )
 
         if show_landmarks:
-            if frame_angles is not None:
+            if frame_angles is not None and self.pose_is_new:
                 self.session.actual_run.append(frame_angles)
             self.update_ongoing_frame(elapsed)
 
         return frame
 
     def analyze_image(self, image):
-        timestamp = int(time.time() * 1000)
-        return self.landmarker.detect_for_video(image, timestamp)
+        # The live loop draws the latest pose; each result joins the run once, when it is new.
+        result, self.pose_is_new = self.live_pose.analyze(image)
+        return result
+
+    def analyze_still(self, image):
+        self.pose_is_new = True
+        return self.landmarker.detect_for_video(image, int(time.time() * 1000))
 
     def do_exercise(self, pose: str):
         self.load_pose(pose)
@@ -538,7 +765,7 @@ class HeadMaster:
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
 
             # Helpful diagnostics for generation mode.
-            result = self.analyze_image(mp_image)
+            result = self.analyze_still(mp_image)
             if not result.pose_landmarks and verbose:
                 print(
                     f"Warning: no landmarks detected for pose '{pose_name}'. "
@@ -546,7 +773,7 @@ class HeadMaster:
                     file=sys.stderr,
                 )
 
-            frame = self.process_image(mp_image, show_landmarks=True)
+            frame = self.process_image(mp_image, show_landmarks=True, analyze=self.analyze_still)
             output_filename = f"output_{pose_name}.jpg"
             cv2.imwrite(output_filename, frame)
             saved_files.append(output_filename)
@@ -566,7 +793,7 @@ class HeadMaster:
         self.voice.intro()
         for pose in poses:
             self.do_exercise(pose)
-        self.voice.outro()
+        self.wait_for_event(self.voice.outro())  # the demo, and its Stop button, last until Marty says goodbye
 
     def handle_key_event(self, key):
         if key == 27:
@@ -575,23 +802,23 @@ class HeadMaster:
             self.cleanup()
             return False
         if key == ord("s"):
-            self.voice.intro()
+            self.start("intro")
         elif key == ord("p"):
             self.logger.setLevel(logging.WARNING)
             self.generate_yoga_images_with_landmarks()
         elif key == ord("d"):
-            random_demo_poses = random.sample(RANDOM_DEMO_POOL, RANDOM_DEMO_COUNT)
-            self.run_demo(poses=random_demo_poses)
+            self.start("demo")
         elif key in EXERCISE_KEY_MAP:
-            self.do_marty_pose_only(EXERCISE_KEY_MAP[key])
+            self.start("demonstrate", EXERCISE_KEY_MAP[key])
         elif key in MEDIAPIPE_KEY_MAP:
-            self.do_mediapipe_pose_only(MEDIAPIPE_KEY_MAP[key])
+            self.start("coach", MEDIAPIPE_KEY_MAP[key])
         return True
 
     def tick(self, key):
         keep_running = self.handle_key_event(key)
         if not keep_running:
             return False
+        self.run_plugin_command()
         self.process_camera_image()
         return True
 
